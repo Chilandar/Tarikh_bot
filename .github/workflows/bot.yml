@@ -1,0 +1,50 @@
+name: Tarikhgan Bot
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+    - cron: "0 4,16 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Scan channel history (max twice a day - see cron above)
+        if: github.event.schedule == '0 4,16 * * *'
+        env:
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          TG_SESSION_STRING: ${{ secrets.TG_SESSION_STRING }}
+        run: python scan_history.py
+
+      - name: Process forwarded books
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_OWNER_USER_ID: ${{ secrets.TG_OWNER_USER_ID }}
+        run: python process_books.py
+
+      - name: Fill / verify schedule slots
+        env:
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          TG_SESSION_STRING: ${{ secrets.TG_SESSION_STRING }}
+          TG_TARGET_CHANNEL: ${{ secrets.TG_TARGET_CHANNEL }}
+        run: python schedule_posts.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name "tarikhi-bot"
+          git config user.email "actions@github.com"
+          git add state/
+          git diff --cached --quiet || git commit -m "به‌روزرسانی وضعیت ربات [skip ci]"
+          git push
