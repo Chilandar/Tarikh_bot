@@ -1,24 +1,48 @@
 # -*- coding: utf-8 -*-
 """
 اسکریپت اصلی گشتن تاریخچه‌ی کانال‌ها.
-هر بار اجرا، حداکثر HISTORY_MESSAGES_PER_RUN پیام جدید (که سنشون بیشتر از
-MIN_AGE_DAYS روزه) رو از کانال‌های SOURCE_CHANNELS می‌خونه، امتیازدهی می‌کنه
-و پست‌های خوب رو به صف post_queue.json اضافه می‌کنه.
-
-این اسکریپت هرگز پست‌های جدیدتر از یک سال پیش رو نمی‌بینه - فقط از قدیمی‌ترین
-پیام هر کانال شروع می‌کنه و رو به جلو (به سمت جدیدتر) حرکت می‌کنه، تا وقتی
-به مرز یک‌سال‌پیش برسه، و بعد اون کانال رو "تمام‌شده" علامت می‌زنه.
+فقط وقتی کاربر دستور /scan رو به بات فرستاده باشه کاری انجام می‌ده - وگرنه
+بلافاصله بدون هیچ تغییری تموم می‌شه.
 
 اجرا: python scan_history.py
-پیشنهاد زمان‌بندی: حداکثر ۲ بار در روز (طبق تصمیم کاربر)
 """
 
 import datetime
+import requests
 import config
 from telegram_client import get_client, load_json, save_json
 from text_utils import detect_category
 
 import pytz
+
+API_BASE = f"https://api.telegram.org/bot{config.BOT_TOKEN}"
+
+
+def scan_command_pending() -> bool:
+    """چک می‌کنه آیا کاربر دستور /scan رو فرستاده یا نه (سبک، فقط یک HTTP request)."""
+    if not config.BOT_TOKEN or not config.OWNER_USER_ID:
+        return False
+
+    last = load_json(config.LAST_COMMAND_UPDATE_ID_FILE, {"update_id": 0})
+    resp = requests.get(f"{API_BASE}/getUpdates", params={"offset": last["update_id"] + 1, "timeout": 10})
+    resp.raise_for_status()
+    updates = resp.json().get("result", [])
+
+    found = False
+    max_update_id = last["update_id"]
+
+    for update in updates:
+        max_update_id = max(max_update_id, update["update_id"])
+        msg = update.get("message", {})
+        if msg.get("from", {}).get("id") != config.OWNER_USER_ID:
+            continue
+        text = (msg.get("text") or "").strip().lower()
+        if text == config.SCAN_COMMAND_TEXT:
+            found = True
+
+    last["update_id"] = max_update_id
+    save_json(config.LAST_COMMAND_UPDATE_ID_FILE, last)
+    return found
 
 
 def get_cutoff_date():
@@ -28,7 +52,6 @@ def get_cutoff_date():
 
 
 def update_channel_average(stats: dict, channel: str, views: int) -> float:
-    """میانگین بازدید کانال رو به‌صورت تدریجی (running average) به‌روز می‌کنه."""
     entry = stats.get(channel, {"count": 0, "avg_views": 0.0})
     count = entry["count"] + 1
     avg = entry["avg_views"] + (views - entry["avg_views"]) / count
@@ -42,11 +65,14 @@ def score_message(text: str, views: int, forwards: int, avg_views: float) -> flo
 
 
 def main():
+    if not scan_command_pending():
+        print(f"دستور {config.SCAN_COMMAND_TEXT} پیدا نشد - این اجرا کاری انجام نمی‌ده.")
+        return
+
+    print(f"دستور {config.SCAN_COMMAND_TEXT} پیدا شد - شروع گشتن تاریخچه...")
     cutoff = get_cutoff_date()
 
     progress = load_json(config.HISTORY_PROGRESS_FILE, {})
-    # progress[channel] = {"last_id": 0, "finished": False}  (last_id=0 یعنی هنوز شروع نشده)
-
     queue = load_json(config.POST_QUEUE_FILE, [])
     stats = load_json(config.CHANNEL_STATS_FILE, {})
 
@@ -60,11 +86,10 @@ def main():
 
             state = progress.get(channel, {"last_id": 0, "finished": False})
             if state.get("finished"):
-                continue  # این کانال قبلاً تا مرز یک‌سال‌پیش کامل بررسی شده
+                continue
 
             entity = client.get_entity(channel)
 
-            # از قدیمی‌ترین پیام به بعد، رو به جلو حرکت می‌کنیم (reverse=True)
             messages = client.iter_messages(
                 entity,
                 reverse=True,
@@ -78,7 +103,6 @@ def main():
             for msg in messages:
                 last_seen_id = msg.id
 
-                # اگه به مرز یک‌سال‌پیش رسیدیم، این کانال رو تمام‌شده علامت می‌زنیم
                 if msg.date >= cutoff:
                     channel_finished = True
                     break
