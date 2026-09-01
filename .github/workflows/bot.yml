@@ -2,8 +2,8 @@ name: Tarikhgan Bot
 
 on:
   schedule:
+    - cron: "0 * * * *"
     - cron: "0 */6 * * *"
-    - cron: "0 4,16 * * *"
   workflow_dispatch: {}
 
 jobs:
@@ -19,21 +19,24 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Scan channel history (max twice a day - see cron above)
-        if: github.event.schedule == '0 4,16 * * *'
+      - name: Check for /scan command and scan if requested
         env:
           TG_API_ID: ${{ secrets.TG_API_ID }}
           TG_API_HASH: ${{ secrets.TG_API_HASH }}
           TG_SESSION_STRING: ${{ secrets.TG_SESSION_STRING }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_OWNER_USER_ID: ${{ secrets.TG_OWNER_USER_ID }}
         run: python scan_history.py
 
       - name: Process forwarded books
+        if: github.event.schedule == '0 */6 * * *' || github.event_name == 'workflow_dispatch'
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_OWNER_USER_ID: ${{ secrets.TG_OWNER_USER_ID }}
         run: python process_books.py
 
       - name: Fill / verify schedule slots
+        if: github.event.schedule == '0 */6 * * *' || github.event_name == 'workflow_dispatch'
         env:
           TG_API_ID: ${{ secrets.TG_API_ID }}
           TG_API_HASH: ${{ secrets.TG_API_HASH }}
