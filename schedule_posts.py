@@ -125,12 +125,8 @@ def verify_and_clean_scheduled(client, entity, scheduled: list) -> list:
     now = tz_now()
     still_valid = []
     for s in scheduled:
-        # فقط اونایی که هنوز باید در آینده منتشر بشن رو چک می‌کنیم؛
-        # پست‌هایی که زمانشون گذشته یعنی احتمالاً قبلاً منتشر شدن (دیگه لازم نیست چک بشن)
         if s["message_id"] in scheduled_ids_on_telegram:
             still_valid.append(s)
-        # اگه پیدا نشد و برای آینده بوده، یعنی حذف شده -> از لیست حذف می‌شه
-        # (در دور بعدیِ حلقه‌ی پرکردن اسلات‌ها، خودکار جایگزین می‌شه)
 
     return still_valid
 
@@ -143,10 +139,10 @@ def main():
     scheduled = load_json(config.SCHEDULED_FILE, [])
     alternator = load_json(ALTERNATOR_FILE, {})
 
-with get_client() as client:
+    with get_client() as client:
         entity = client.get_entity(config.TARGET_CHANNEL)
         client.parse_mode = "html"
-  
+
         # ۱. حذف پست‌هایی که کاربر دستی پاکشون کرده از لیست وضعیت
         scheduled = verify_and_clean_scheduled(client, entity, scheduled)
         occupied_slots = {s["slot_key"] for s in scheduled}
@@ -175,14 +171,12 @@ with get_client() as client:
                 if base_key in occupied_slots:
                     continue
 
-                # پست حکایت/داستان/شعر
                 hekayat_item = pop_best(post_queue, category=config.CATEGORY_HEKAYAT)
                 if hekayat_item:
                     msg_id = send_post(client, entity, hekayat_item, slot_dt)
                     scheduled.append({"slot_key": base_key, "message_id": msg_id, "type": "post"})
                     occupied_slots.add(base_key)
 
-                # دو کتاب پشت‌سرهم (۲ دقیقه فاصله تا با هم تداخل نکنن)
                 for i in range(config.BOOKS_PER_SLOT):
                     book_item = pop_next_book(book_queue)
                     if not book_item:
@@ -200,7 +194,7 @@ with get_client() as client:
                     continue
                 item = pop_best(post_queue, exclude_categories=config.RESERVED_CATEGORIES)
                 if not item:
-                    item = pop_best(post_queue)  # اگه چیز عمومی نبود، هرچی بهترینه
+                    item = pop_best(post_queue)
                 if not item:
                     continue
                 msg_id = send_post(client, entity, item, slot_dt)
