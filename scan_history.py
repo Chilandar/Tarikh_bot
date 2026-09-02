@@ -34,6 +34,7 @@ def scan_command_pending() -> bool:
     for update in updates:
         max_update_id = max(max_update_id, update["update_id"])
         msg = update.get("message", {})
+        print("DEBUG: sender_id=", msg.get("from", {}).get("id"), "expected=", config.OWNER_USER_ID, "text=", msg.get("text"))
         if msg.get("from", {}).get("id") != config.OWNER_USER_ID:
             continue
         text = (msg.get("text") or "").strip().lower()
