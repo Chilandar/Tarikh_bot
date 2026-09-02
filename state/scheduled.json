@@ -20,16 +20,6 @@
     "type": "post"
   },
   {
-    "slot_key": "19-book-2026-09-02-0",
-    "message_id": 2136,
-    "type": "book"
-  },
-  {
-    "slot_key": "19-book-2026-09-02-1",
-    "message_id": 2142,
-    "type": "book"
-  },
-  {
     "slot_key": "2026-09-03T10:00:00+03:30",
     "message_id": 2143,
     "type": "post"
