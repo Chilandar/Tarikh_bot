@@ -145,6 +145,7 @@ def main():
 
     with get_client() as client:
         entity = client.get_entity(config.TARGET_CHANNEL)
+      client.parse_mode = "html"
 
         # ۱. حذف پست‌هایی که کاربر دستی پاکشون کرده از لیست وضعیت
         scheduled = verify_and_clean_scheduled(client, entity, scheduled)
