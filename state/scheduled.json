@@ -1,1 +1,32 @@
-[]
+[
+  {
+    "slot_key": "16-2026-09-02",
+    "message_id": 2130,
+    "type": "post"
+  },
+  {
+    "slot_key": "2026-09-03T10:00:00+03:30",
+    "message_id": 2131,
+    "type": "post"
+  },
+  {
+    "slot_key": "2026-09-03T13:00:00+03:30",
+    "message_id": 2132,
+    "type": "post"
+  },
+  {
+    "slot_key": "16-2026-09-03",
+    "message_id": 2133,
+    "type": "post"
+  },
+  {
+    "slot_key": "2026-09-04T10:00:00+03:30",
+    "message_id": 2134,
+    "type": "post"
+  },
+  {
+    "slot_key": "2026-09-04T13:00:00+03:30",
+    "message_id": 2135,
+    "type": "post"
+  }
+]

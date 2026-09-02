@@ -1,1 +1,18 @@
-{}
+{
+  "World5History": {
+    "last_id": 11,
+    "finished": false
+  },
+  "IranAncient": {
+    "last_id": 16,
+    "finished": false
+  },
+  "AsrTarikh": {
+    "last_id": 39082,
+    "finished": false
+  },
+  "ancientir": {
+    "last_id": 8,
+    "finished": false
+  }
+}

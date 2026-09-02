@@ -1,1 +1,74 @@
-[]
+[
+  {
+    "channel": "IranAncient",
+    "message_id": 6,
+    "text": "نمایی از داخل زیگوات چغازنبیل \nسکویی که مجسمه ایزد بر روی آن قرار میگرفته است\n\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "general",
+    "score": 123.0,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 11,
+    "text": "کلاهخود 3200 ساله ایلامی \nهم اکنون در موزه متروپولتین نیویورک \nمعروف به کلاهخود پرنده سه پیکر \nبا نقش شاهین طلایی و سه ایزد بزرگ ایلامی \nاینشوشیناک، هومبان ، کری ریشا \n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "general",
+    "score": 153.023,
+    "used": true
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 15,
+    "text": "تصویری از درون چغازنبیل\nآجرهای کتیبه دار در ورودی چغازنبیل \n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "aks_iran_qadim",
+    "score": 48.924,
+    "used": true
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 16,
+    "text": "کانال تاریخ و تمدن ایلام باستان\nتمدن ایلام باستان میراث بزرگ ایران زمین \nآشنایی با هویت و داشته های این تمدن بزرگ در راستای تمدن بزرگ ایران \n\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "general",
+    "score": 45.637,
+    "used": false
+  },
+  {
+    "channel": "AsrTarikh",
+    "message_id": 39079,
+    "text": "‌خدایا به دوستانم:\nعمر جنتی؛\nثروت بابک زنجانی؛\nصدای شجریان؛\nاعتماد به نفس احمدی نژاد؛\nو بی‌خیالی روحانی را عطا بفرما!!!\nو لبانشان را همچون دکتر ظریف خندان بگردان!!!\nالهی آمین🤲\n@AsrTarikh",
+    "has_photo": true,
+    "category": "general",
+    "score": 1331.0,
+    "used": true
+  },
+  {
+    "channel": "AsrTarikh",
+    "message_id": 39080,
+    "text": "این خانم اهل لیورپول موهاشو تراشیده به دوستاش و آشناهاش گفته سرطان گرفتم و برای درمان پول لازم دارم. \n\nطبیعتا همه دلشون سوخته و براش ۸۵۰۰ پوند جمع کردن، ایشون هم پولارو برداشته و گفته میرم برای درمان، بعد با نامزدش رفتن و با اون پول عروسی گرفتن واسه خودشون!\nبعد یه مدت برگشته گفته سرطانم درمان شد، ولی خب دیروز لو رفته و پلیس اومده بازداشتش کرده!\n\n@AsrTarikh",
+    "has_photo": true,
+    "category": "sokhan_bozorgan",
+    "score": 204.876,
+    "used": true
+  },
+  {
+    "channel": "AsrTarikh",
+    "message_id": 39081,
+    "text": "حدود ۴۰ سال پيش در روزهایی که آغاز درگیری‌های ایران و آمریکا بود، ایران با این تفکر که ما نفت داریم و دنیا به نفت نیاز دارد، آمریکا و کشورهای متحد آمریکا را تهدید به تحریم نفتی می‌کرد!\n\n@AsrTarikh",
+    "has_photo": true,
+    "category": "general",
+    "score": 282.895,
+    "used": true
+  },
+  {
+    "channel": "AsrTarikh",
+    "message_id": 39082,
+    "text": "حكم اختلاس ۳متر سيم مسی در دهه ۴۰\nسه ماه حبس و انفصال ابدی از خدمات دولتی!\n\n@AsrTarikh",
+    "has_photo": true,
+    "category": "general",
+    "score": 394.933,
+    "used": true
+  }
+]
