@@ -24,6 +24,8 @@ OWNER_USER_ID = int(os.environ.get("TG_OWNER_USER_ID", "0"))
 # پوشه‌ای که فایل‌های کتاب دانلودشده موقتاً توش ذخیره می‌شن
 BOOKS_DIR = os.path.join(os.path.dirname(__file__), "state", "books")
 
+# دستوری که باید به بات فرستاده بشه تا گشتن تاریخچه‌ی کانال‌ها شروع بشه
+SCAN_COMMAND_TEXT = "/scan"
 # ---------------------------------------------------------------------------
 # کانال‌های منبع (که ربات پست‌های قدیمی‌شون رو می‌گرده)
 # ---------------------------------------------------------------------------
@@ -108,4 +110,5 @@ POST_QUEUE_FILE = os.path.join(STATE_DIR, "post_queue.json")               # ص�
 BOOK_QUEUE_FILE = os.path.join(STATE_DIR, "book_queue.json")               # صف کتاب‌های آماده
 SCHEDULED_FILE = os.path.join(STATE_DIR, "scheduled.json")                 # پست‌های زمان‌بندی‌شده‌ی فعلی
 LAST_BOOK_MSG_ID_FILE = os.path.join(STATE_DIR, "last_book_msg_id.json")   # آخرین پیام چک‌شده برای کتاب‌ها
+LAST_COMMAND_UPDATE_ID_FILE = os.path.join(STATE_DIR, "last_command_update_id.json")  # آخرین پیام چک‌شده برای دستور /scan
 CHANNEL_STATS_FILE = os.path.join(STATE_DIR, "channel_stats.json")         # میانگین بازدید هر کانال
