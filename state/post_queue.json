@@ -123,7 +123,7 @@
     "has_photo": true,
     "category": "general",
     "score": 727.034,
-    "used": false
+    "used": true
   },
   {
     "channel": "AsrTarikh",
@@ -159,6 +159,78 @@
     "has_photo": true,
     "category": "sokhan_bozorgan",
     "score": 197.0,
+    "used": true
+  },
+  {
+    "channel": "World5History",
+    "message_id": 29,
+    "text": "حامیان دکتر مصدق تصویر بزرگ او را در تجمع مقابل مجلس بالا میبرند اسفند 1331",
+    "has_photo": false,
+    "category": "general",
+    "score": 21.0,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 30,
+    "text": "تصویر گرافیکی از سنگ نگاره کورنگان\n\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "general",
+    "score": 22.69,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 32,
+    "text": "تصویر شیر ایلامی کشف شده در شوش \nمحل نگهداری موزه لوور فرانسه\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "general",
+    "score": 52.761,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 34,
+    "text": "سنگ یادمان پازورو اینشوشیناک پادشاه سلسله آوان در کنار همسرش\n\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "general",
+    "score": 20.69,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 35,
+    "text": "تصویری از درون چغازنبیل \nگیره های که برای نگه داشتن و قفل در بکار میرفتند \n\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "aks_iran_qadim",
+    "score": 8.664,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 37,
+    "text": "آویز مربوط به قرن 12 قبل از میلاد \nکه کتیبه نوشته شده بر روی آن چنین است: \nمن شیلهاک اینشوشیناک گسترنده امپراتوری این سنگ را که از سرزمین پورآلیش به غنمیت گرفتم . با دقت و زحمت ساختم و به دختر محبوبم \"باراولی\" هدیه دادم . \nبر روی این آویز علاوه بر کتیبه صحنه هدیه دادن آویز توسط شیلهاک اینشوشیناک به دخترش به تصویر کشیده شده است \n👇👇👇👇👇\n@ElamiteHistorian",
+    "has_photo": false,
+    "category": "general",
+    "score": 10.787,
+    "used": false
+  },
+  {
+    "channel": "AsrTarikh",
+    "message_id": 39088,
+    "text": "راه حل اقتصادی و تظمینی دولت برای جبران کسری بودجه!!  همون مردم بنیانی\n\nجدیدا برا اینکه ۹ به بعد تو خیابون جریمه ام نکنن شماره کفشمو مخدوش میکنم!! ۴۳ رو با آدامس کردم ۴۱\n@AsrTarikh",
+    "has_photo": false,
+    "category": "general",
+    "score": 274.946,
+    "used": false
+  },
+  {
+    "channel": "AsrTarikh",
+    "message_id": 39090,
+    "text": "دو تن از بانوان نيروي هوايي ارتش\n\nچی بودیم چی شدیم!؟\n\n@AsrTarikh",
+    "has_photo": true,
+    "category": "general",
+    "score": 240.959,
     "used": false
   }
 ]
