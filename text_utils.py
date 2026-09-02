@@ -6,6 +6,7 @@
 
 import re
 import config
+import html
 
 # ---------------------------------------------------------------------------
 # پاک‌سازی پست‌های استخراج‌شده از کانال‌های دیگر
@@ -14,21 +15,18 @@ import config
 USERNAME_RE = re.compile(r"@\w+")
 TME_LINK_RE = re.compile(r"(https?://)?t\.me/\S+")
 
-
 def clean_channel_post_text(original_text: str) -> str:
     """
-    آیدی/یوزرنیم و لینک‌های t.me رو از متن پست حذف می‌کنه و امضای خودمون رو
-    با یک خط فاصله‌ی کامل در انتها اضافه می‌کنه.
+    آیدی/یوزرنیم و لینک‌های t.me رو از متن پست حذف می‌کنه، متن اصلی رو بولد
+    می‌کنه، و امضای خودمون رو (بدون بولد) با یک خط فاصله‌ی کامل در انتها اضافه می‌کنه.
     """
     text = original_text or ""
     text = USERNAME_RE.sub("", text)
     text = TME_LINK_RE.sub("", text)
-
-    # حذف خط‌های خالیِ اضافه‌شده در اثر پاک‌سازی، از انتها
     text = text.rstrip()
 
-    return f"{text}\n\n{config.SIGNATURE}"
-
+    bold_text = f"<b>{html.escape(text)}</b>"
+    return f"{bold_text}\n\n{config.SIGNATURE}"
 
 # ---------------------------------------------------------------------------
 # تشخیص دسته‌بندی محتوا بر اساس کلیدواژه
@@ -153,7 +151,8 @@ def process_book_caption(raw_caption: str):
     if volume_number:
         body_lines.append(f"📕 جلد {volume_number}")
 
-    clean_caption = "\n".join(body_lines) + f"\n\n{config.SIGNATURE}"
+    bold_body = f"<b>{html.escape(chr(10).join(body_lines))}</b>"
+    clean_caption = f"{bold_body}\n\n{config.SIGNATURE}"
 
     return {
         "clean_caption": clean_caption,
