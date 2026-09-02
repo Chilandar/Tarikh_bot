@@ -143,10 +143,10 @@ def main():
     scheduled = load_json(config.SCHEDULED_FILE, [])
     alternator = load_json(ALTERNATOR_FILE, {})
 
-    with get_client() as client:
+with get_client() as client:
         entity = client.get_entity(config.TARGET_CHANNEL)
-      client.parse_mode = "html"
-
+        client.parse_mode = "html"
+  
         # ۱. حذف پست‌هایی که کاربر دستی پاکشون کرده از لیست وضعیت
         scheduled = verify_and_clean_scheduled(client, entity, scheduled)
         occupied_slots = {s["slot_key"] for s in scheduled}
