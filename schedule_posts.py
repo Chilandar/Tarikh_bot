@@ -1,18 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 اسکریپت اصلی زمان‌بندی. کاراش:
-  ۱. چک می‌کنه پست‌هایی که قبلاً زمان‌بندی کرده هنوز سرجاشون هستن یا حذف شدن
-     (اگه حذف شده باشن، جایگزین می‌کنه).
-  ۲. اسلات‌های خالیِ ۲ روز آینده رو با محتوای مناسب (از صف پست‌ها یا صف کتاب‌ها) پر می‌کنه.
-
-قوانین اسلات‌ها (به‌وقت تهران):
-  ۱۰:۰۰ و ۱۳:۰۰  -> عمومی (بهترین پست موجود، به‌جز دسته‌های رزروشده)
-  ۱۶:۰۰          -> یکی‌درمیون: سخن بزرگان / تصاویر ایران قدیم
-  ۱۹:۰۰          -> یک پست حکایت/داستان/شعر + ۲ کتاب (۳ پست پشت‌سرهم)
-  ۲۲:۰۰          -> دست‌نخورده، متعلق به خود کاربره
+  ۱. چک می‌کنه پست‌هایی که قبلاً زمان‌بندی کرده هنوز سرجاشون هستن یا حذف شدن.
+  ۲. اسلات‌های خالیِ ۲ روز آینده رو با محتوای مناسب پر می‌کنه.
 
 اجرا: python schedule_posts.py
-پیشنهاد زمان‌بندی: هر ۶ ساعت (هماهنگ با process_books.py)
 """
 
 import datetime
@@ -20,7 +12,7 @@ import os
 import pytz
 
 import config
-from telegram_client import get_client, load_json, save_json
+from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import clean_channel_post_text
 from telethon.tl.functions.messages import GetScheduledHistoryRequest
 
@@ -33,7 +25,6 @@ def tz_now():
 
 
 def build_future_slots():
-    """لیست تمام اسلات‌های آینده (۲ روز جلوتر) به‌جز ساعت‌های رزروشده رو می‌سازه."""
     now = tz_now()
     slots = []
     for day_offset in range(LOOKAHEAD_DAYS + 1):
@@ -81,12 +72,15 @@ def get_16_category(alternator: dict) -> str:
 
 
 def send_post(client, entity, item: dict, schedule_dt: datetime.datetime):
-    """یک آیتم از صف پست‌های کانال‌ها رو (متن + عکس اگه داشت) زمان‌بندی می‌کنه."""
-    source_msg = client.get_messages(item["channel"], ids=item["message_id"])
     final_text = clean_channel_post_text(item["text"])
 
-    if item.get("has_photo") and source_msg and source_msg.photo:
-        media_path = client.download_media(source_msg.photo)
+    if item.get("has_photo"):
+        source_msg = client.get_messages(item["channel"], ids=item["message_id"])
+        if not source_msg or not source_msg.media:
+            return None
+        media_path = client.download_media(source_msg)
+        if not media_path:
+            return None
         sent = client.send_file(entity, media_path, caption=final_text, schedule=schedule_dt)
     else:
         sent = client.send_message(entity, final_text, schedule=schedule_dt)
@@ -102,7 +96,6 @@ def send_book(client, entity, book_item: dict, schedule_dt: datetime.datetime):
         force_document=True,
         schedule=schedule_dt,
     )
-    # بعد از زمان‌بندی موفق، فایل محلی رو پاک می‌کنیم که ریپازیتوری سنگین نشه
     try:
         os.remove(book_item["file_path"])
     except OSError:
@@ -111,18 +104,12 @@ def send_book(client, entity, book_item: dict, schedule_dt: datetime.datetime):
 
 
 def verify_and_clean_scheduled(client, entity, scheduled: list) -> list:
-    """
-    پست‌هایی که کاربر از بخش «پیام‌های زمان‌بندی‌شده» حذف کرده رو از لیست پاک می‌کنه.
-    توجه: پیام‌های زمان‌بندی‌شده (که هنوز منتشر نشدن) با get_messages معمولی دیده
-    نمی‌شن؛ باید از GetScheduledHistoryRequest استفاده کرد.
-    """
     if not scheduled:
         return scheduled
 
     result = client(GetScheduledHistoryRequest(peer=entity, hash=0))
     scheduled_ids_on_telegram = {m.id for m in result.messages}
 
-    now = tz_now()
     still_valid = []
     for s in scheduled:
         if s["message_id"] in scheduled_ids_on_telegram:
@@ -132,8 +119,6 @@ def verify_and_clean_scheduled(client, entity, scheduled: list) -> list:
 
 
 def main():
-    now = tz_now()
-
     post_queue = load_json(config.POST_QUEUE_FILE, [])
     book_queue = load_json(config.BOOK_QUEUE_FILE, [])
     scheduled = load_json(config.SCHEDULED_FILE, [])
@@ -143,11 +128,9 @@ def main():
         entity = client.get_entity(config.TARGET_CHANNEL)
         client.parse_mode = "html"
 
-        # ۱. حذف پست‌هایی که کاربر دستی پاکشون کرده از لیست وضعیت
         scheduled = verify_and_clean_scheduled(client, entity, scheduled)
         occupied_slots = {s["slot_key"] for s in scheduled}
 
-        # ۲. پر کردن اسلات‌های خالی
         future_slots = build_future_slots()
 
         for slot_dt in future_slots:
@@ -163,6 +146,9 @@ def main():
                 if not item:
                     continue
                 msg_id = send_post(client, entity, item, slot_dt)
+                if msg_id is None:
+                    print(f"⚠️ پست دسته {category} به‌خاطر نبودن عکس رد شد.")
+                    continue
                 scheduled.append({"slot_key": base_key, "message_id": msg_id, "type": "post"})
                 occupied_slots.add(base_key)
 
@@ -174,8 +160,11 @@ def main():
                 hekayat_item = pop_best(post_queue, category=config.CATEGORY_HEKAYAT)
                 if hekayat_item:
                     msg_id = send_post(client, entity, hekayat_item, slot_dt)
-                    scheduled.append({"slot_key": base_key, "message_id": msg_id, "type": "post"})
-                    occupied_slots.add(base_key)
+                    if msg_id is None:
+                        print("⚠️ پست حکایت به‌خاطر مشکل مدیا رد شد.")
+                    else:
+                        scheduled.append({"slot_key": base_key, "message_id": msg_id, "type": "post"})
+                        occupied_slots.add(base_key)
 
                 for i in range(config.BOOKS_PER_SLOT):
                     book_item = pop_next_book(book_queue)
@@ -189,7 +178,7 @@ def main():
                     scheduled.append({"slot_key": book_slot_key, "message_id": msg_id, "type": "book"})
                     occupied_slots.add(book_slot_key)
 
-            else:  # ۱۰ و ۱۳ -> عمومی، به‌جز دسته‌های رزروشده
+            else:
                 if slot_key in occupied_slots:
                     continue
                 item = pop_best(post_queue, exclude_categories=config.RESERVED_CATEGORIES)
@@ -198,6 +187,9 @@ def main():
                 if not item:
                     continue
                 msg_id = send_post(client, entity, item, slot_dt)
+                if msg_id is None:
+                    print("⚠️ پست عمومی به‌خاطر مشکل مدیا رد شد.")
+                    continue
                 scheduled.append({"slot_key": slot_key, "message_id": msg_id, "type": "post"})
                 occupied_slots.add(slot_key)
 
