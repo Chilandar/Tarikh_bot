@@ -141,7 +141,7 @@
     "has_photo": true,
     "category": "general",
     "score": 244.922,
-    "used": false
+    "used": true
   },
   {
     "channel": "AsrTarikh",
@@ -204,7 +204,7 @@
     "has_photo": true,
     "category": "aks_iran_qadim",
     "score": 8.664,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -222,7 +222,7 @@
     "has_photo": false,
     "category": "general",
     "score": 274.946,
-    "used": false
+    "used": true
   },
   {
     "channel": "AsrTarikh",
