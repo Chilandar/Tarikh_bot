@@ -45,18 +45,13 @@
     "type": "book"
   },
   {
-    "slot_key": "19-book-2026-09-04-0",
-    "message_id": 2151,
-    "type": "book"
-  },
-  {
     "slot_key": "19-book-2026-09-04-1",
     "message_id": 2152,
     "type": "book"
   },
   {
     "slot_key": "2026-09-05T10:00:00+03:30",
-    "message_id": 2153,
+    "message_id": 2154,
     "type": "post"
   }
 ]
