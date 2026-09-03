@@ -1,18 +1,18 @@
 {
   "IranAncient": {
-    "count": 20,
-    "avg_views": 9471.5
+    "count": 23,
+    "avg_views": 9029.782608695652
   },
   "AsrTarikh": {
-    "count": 13,
-    "avg_views": 36939.307692307695
+    "count": 15,
+    "avg_views": 44015.26666666667
   },
   "ancientir": {
-    "count": 1,
-    "avg_views": 19802.0
+    "count": 3,
+    "avg_views": 19580.666666666668
   },
   "World5History": {
-    "count": 32,
-    "avg_views": 6040.0625
+    "count": 35,
+    "avg_views": 6151.057142857143
   }
 }
