@@ -412,5 +412,95 @@
     "category": "sokhan_bozorgan",
     "score": 39.291,
     "used": false
+  },
+  {
+    "channel": "World5History",
+    "message_id": 103,
+    "text": "ایستگاه یا به عبارتی خط درشکه ها در خیابانی نامعلوم در تهران",
+    "has_photo": true,
+    "category": "general",
+    "score": 16.907,
+    "used": false
+  },
+  {
+    "channel": "World5History",
+    "message_id": 118,
+    "text": "درود برشما عزیزان امیدوارم از تصاویر لذت برده باشید\nتا یک ساعت دیگر چند تصویر ندیده شده با موضوعات متفاوت و البته غیر وطنی قرار خواهم داد.شاد باشید",
+    "has_photo": false,
+    "category": "general",
+    "score": 0.758,
+    "used": false
+  },
+  {
+    "channel": "World5History",
+    "message_id": 119,
+    "text": "زندانیان زندانی در حال اواز خانی جالب است بدانید این تعداد زندانی به علت ناتوانی و عدم پرداخت نفقه در زندان به سر میبرند امریکا کریسمس1940",
+    "has_photo": true,
+    "category": "general",
+    "score": 24.904,
+    "used": false
+  },
+  {
+    "channel": "World5History",
+    "message_id": 125,
+    "text": "دستگیری جاسوس روسی در امریکا که برای روسها جاسوسی میکرد 1960",
+    "has_photo": true,
+    "category": "general",
+    "score": 4.899,
+    "used": false
+  },
+  {
+    "channel": "World5History",
+    "message_id": 126,
+    "text": "چترباز امریکایی در حال بازی طناب با کودکان ویتنام جنوبی 1966",
+    "has_photo": true,
+    "category": "general",
+    "score": 4.881,
+    "used": false
+  },
+  {
+    "channel": "World5History",
+    "message_id": 129,
+    "text": "استیو جابز بنیانگذار شرکت اپل در کنار موسس شرکت سامسونگ 1987",
+    "has_photo": true,
+    "category": "general",
+    "score": 10.952,
+    "used": false
+  },
+  {
+    "channel": "World5History",
+    "message_id": 130,
+    "text": "سرباز امریکایی در حال نواختن گیتار در ویتنام جنوبی ",
+    "has_photo": true,
+    "category": "general",
+    "score": 14.942,
+    "used": false
+  },
+  {
+    "channel": "World5History",
+    "message_id": 131,
+    "text": "کلاههای به جا مانده از سربازان کشته شده ایتالیایی در مکانی نامعلوم در جنگ جهانی",
+    "has_photo": true,
+    "category": "general",
+    "score": 4.936,
+    "used": false
+  },
+  {
+    "channel": "World5History",
+    "message_id": 133,
+    "text": "کشتی دزدان دریایی که در بین سالهای 1909 تا 1913 دست به غارت میزدند وفقط به دو کشتی نتوانستند غارت بزنند یکی تایتانیک دومی بریتانیک...",
+    "has_photo": true,
+    "category": "general",
+    "score": 25.251,
+    "used": false
+  },
+  {
+    "channel": "World5History",
+    "message_id": 137,
+    "text": "هواپیمای به غنیمت گرفته شده نیروهای المانی در جنگ جهانی اول",
+    "has_photo": true,
+    "category": "general",
+    "score": 15.05,
+    "used": false
   }
 ]
