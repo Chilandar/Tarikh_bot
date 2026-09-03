@@ -20,11 +20,6 @@
     "type": "post"
   },
   {
-    "slot_key": "2026-09-03T10:00:00+03:30",
-    "message_id": 2143,
-    "type": "post"
-  },
-  {
     "slot_key": "19-book-2026-09-03-0",
     "message_id": 2144,
     "type": "book"
@@ -35,11 +30,6 @@
     "type": "post"
   },
   {
-    "slot_key": "2026-09-05T10:00:00+03:30",
-    "message_id": 2146,
-    "type": "post"
-  },
-  {
     "slot_key": "2026-09-05T13:00:00+03:30",
     "message_id": 2147,
     "type": "post"
@@ -47,6 +37,11 @@
   {
     "slot_key": "16-2026-09-05",
     "message_id": 2148,
+    "type": "post"
+  },
+  {
+    "slot_key": "2026-09-05T10:00:00+03:30",
+    "message_id": 2149,
     "type": "post"
   }
 ]

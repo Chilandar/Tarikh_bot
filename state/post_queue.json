@@ -232,5 +232,95 @@
     "category": "general",
     "score": 240.959,
     "used": false
+  },
+  {
+    "channel": "World5History",
+    "message_id": 46,
+    "text": "این مجموعه تمبر با عنوان \"لباس های محلی ایران\"\n اثر استاد محمود جوادی پور \nدر سال ۱۳۳۴ منتشر شدند.",
+    "has_photo": false,
+    "category": "general",
+    "score": 40.965,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 40,
+    "text": "تصویری از اشکفت سلمان (نیایشگاه تاریشا)\n\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "aks_iran_qadim",
+    "score": 32.679,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 41,
+    "text": "تصویر گرافیکی یکی از نگاره های اشکفت سلمان \n\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "general",
+    "score": 24.651,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 42,
+    "text": "سر گریفن از مفرغ سده 7 پیش از میلاد \nتمدن ایلام،شوش \nگریفن بعدها توسط هخامنشیان و در معماری آنها بکار میرفت و در تخت جمشید نیز شاهد گریفن هستیم\n\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "general",
+    "score": 20.651,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 44,
+    "text": "تصویری از کتیبه ایلامی اشکفت سلمان در ایذه\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "aks_iran_qadim",
+    "score": 24.65,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 45,
+    "text": "مجسمه شیر ماده با بدن انسان ، تمدن ایلام  ، حدود 2900 قبل از میلاد، از جنس منیزیت، موزه بروکلین \n\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "general",
+    "score": 34.67,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 46,
+    "text": "مجسمه فاخته از لاجورد \nتمدن ایلام ، 1300 سال قبل از میلاد \nهم اکنون در موزه لوور فرانسه\n\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "general",
+    "score": 20.64,
+    "used": false
+  },
+  {
+    "channel": "AsrTarikh",
+    "message_id": 39093,
+    "text": "این فیلم قدیمی‌ترین فیلم گرفته شده از تخت جمشید است!\n\nاین فیلم که مربوط به سال ۱۹۳۱ است یعنی حدود ۹۰ سال قبل! در آن زمان هنوز تخت جمشید مورد کاوش قرار نگرفته بود!\n\n@AsrTarikh",
+    "has_photo": false,
+    "category": "general",
+    "score": 643.058,
+    "used": true
+  },
+  {
+    "channel": "AsrTarikh",
+    "message_id": 39096,
+    "text": "#طنز_آموزنده\n\nشخص فضولی به ملانصرالدین گفت: \nهمسایه ات عروسی دارد\nملا گفت: به من چه!\nآن شخص گفت: \nشاید برای شما \nشیرینی و شام بیاورند\nملا گفت: به تو چه؟\n\nدر زندگی دیگران کمتر سرک بکشید👌🏻\n\n@AsrTarikh",
+    "has_photo": true,
+    "category": "sokhan_bozorgan",
+    "score": 425.195,
+    "used": false
+  },
+  {
+    "channel": "AsrTarikh",
+    "message_id": 39097,
+    "text": "گزارش یونیورسال نیوزریل از مراسم جشن تولد ۴۰ سالگی شاه، ۱۹۵۹\n\n@AsrTarikh",
+    "has_photo": false,
+    "category": "general",
+    "score": 327.228,
+    "used": false
   }
 ]
