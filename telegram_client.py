@@ -24,15 +24,16 @@ def get_client() -> TelegramClient:
 def send_bot_message(text: str, reply_markup: dict = None) -> None:
     """یک پیام از طرف بات برای خود کاربر (OWNER_USER_ID) می‌فرسته - برای گزارش/تأیید."""
     if not config.BOT_TOKEN or not config.OWNER_USER_ID:
+        print("DEBUG: send_bot_message رد شد چون BOT_TOKEN یا OWNER_USER_ID خالیه")
         return
     payload = {"chat_id": config.OWNER_USER_ID, "text": text}
     if reply_markup:
         payload["reply_markup"] = json.dumps(reply_markup)
     try:
-        requests.post(f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage", data=payload, timeout=10)
-    except requests.RequestException:
-        pass  # اگه گزارش نرسید، مهم نیست کل اجرا خراب بشه
-
+        resp = requests.post(f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage", data=payload, timeout=10)
+        print("DEBUG: sendMessage status:", resp.status_code, "body:", resp.text[:300])
+    except requests.RequestException as e:
+        print("DEBUG: sendMessage exception:", e)
 
 # ---------------------------------------------------------------------------
 # خواندن/نوشتن فایل‌های وضعیت (JSON)
