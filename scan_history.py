@@ -2,7 +2,7 @@
 """
 اسکریپت اصلی گشتن تاریخچه‌ی کانال‌ها.
 فقط وقتی کاربر دستور /scan رو به بات فرستاده باشه کاری انجام می‌ده - وگرنه
-بلافاصله بدون هیچ تغییری تموم می‌شه.
+بلافاصله بدون هیچ تغییری تموم می‌شه. به کاربر هم گزارش می‌ده (شروع + نتیجه).
 
 اجرا: python scan_history.py
 """
@@ -10,18 +10,41 @@
 import datetime
 import requests
 import config
-from telegram_client import get_client, load_json, save_json
+from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import detect_category
 
 import pytz
 
 API_BASE = f"https://api.telegram.org/bot{config.BOT_TOKEN}"
 
+SCAN_KEYBOARD = {
+    "keyboard": [[{"text": config.SCAN_COMMAND_TEXT}]],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
+
+
+def ensure_bot_menu():
+    """دستورهای بات رو توی منوی «/» تلگرام ثبت می‌کنه."""
+    try:
+        requests.post(
+            f"{API_BASE}/setMyCommands",
+            json={"commands": [{"command": "scan", "description": "شروع گشتن تاریخچه‌ی کانال‌ها"}]},
+            timeout=10,
+        )
+    except requests.RequestException:
+        pass
+
 
 def scan_command_pending() -> bool:
-    """چک می‌کنه آیا کاربر دستور /scan رو فرستاده یا نه (سبک، فقط یک HTTP request)."""
+    """
+    چک می‌کنه آیا کاربر (OWNER_USER_ID) دستور /scan رو به بات فرستاده یا نه.
+    اگه /start فرستاده باشه، یک دکمه‌ی ثابت «/scan» براش می‌فرسته.
+    """
     if not config.BOT_TOKEN or not config.OWNER_USER_ID:
         return False
+
+    ensure_bot_menu()
 
     last = load_json(config.LAST_COMMAND_UPDATE_ID_FILE, {"update_id": 0})
     resp = requests.get(f"{API_BASE}/getUpdates", params={"offset": last["update_id"] + 1, "timeout": 10})
@@ -34,11 +57,16 @@ def scan_command_pending() -> bool:
     for update in updates:
         max_update_id = max(max_update_id, update["update_id"])
         msg = update.get("message", {})
-        print("DEBUG: sender_id=", msg.get("from", {}).get("id"), "expected=", config.OWNER_USER_ID, "text=", msg.get("text"))
         if msg.get("from", {}).get("id") != config.OWNER_USER_ID:
             continue
         text = (msg.get("text") or "").strip().lower()
-        if text == config.SCAN_COMMAND_TEXT:
+
+        if text == "/start":
+            send_bot_message(
+                "سلام! برای شروع گشتن تاریخچه‌ی کانال‌ها، دکمه‌ی زیر رو بزن یا /scan رو بفرست.",
+                reply_markup=SCAN_KEYBOARD,
+            )
+        elif text == config.SCAN_COMMAND_TEXT:
             found = True
 
     last["update_id"] = max_update_id
@@ -71,6 +99,8 @@ def main():
         return
 
     print(f"دستور {config.SCAN_COMMAND_TEXT} پیدا شد - شروع گشتن تاریخچه...")
+    send_bot_message("🔍 شروع گشتن تاریخچه‌ی کانال‌ها... (چند دقیقه طول می‌کشه)")
+
     cutoff = get_cutoff_date()
 
     progress = load_json(config.HISTORY_PROGRESS_FILE, {})
@@ -79,6 +109,7 @@ def main():
 
     remaining_budget = config.HISTORY_MESSAGES_PER_RUN
     added_count = 0
+    per_channel_report = {}
 
     with get_client() as client:
         for channel in config.SOURCE_CHANNELS:
@@ -87,6 +118,7 @@ def main():
 
             state = progress.get(channel, {"last_id": 0, "finished": False})
             if state.get("finished"):
+                per_channel_report[channel] = "تاریخچه تمام شده"
                 continue
 
             entity = client.get_entity(channel)
@@ -95,14 +127,17 @@ def main():
                 entity,
                 reverse=True,
                 offset_id=state["last_id"],
-                limit=remaining_budget,
+                limit=config.HISTORY_RAW_SCAN_CAP,
             )
 
             last_seen_id = state["last_id"]
             channel_finished = False
+            channel_added = 0
+            channel_scanned = 0
 
             for msg in messages:
                 last_seen_id = msg.id
+                channel_scanned += 1
 
                 if msg.date >= cutoff:
                     channel_finished = True
@@ -134,6 +169,7 @@ def main():
                     "used": False,
                 })
                 added_count += 1
+                channel_added += 1
                 remaining_budget -= 1
 
                 if remaining_budget <= 0:
@@ -143,12 +179,18 @@ def main():
                 "last_id": last_seen_id,
                 "finished": channel_finished,
             }
+            per_channel_report[channel] = f"{channel_added} پست اضافه شد (از {channel_scanned} پیام بررسی‌شده)"
 
     save_json(config.HISTORY_PROGRESS_FILE, progress)
     save_json(config.POST_QUEUE_FILE, queue)
     save_json(config.CHANNEL_STATS_FILE, stats)
 
-    print(f"{added_count} پست جدید به صف اضافه شد. مجموع صف: {len(queue)}")
+    summary_lines = [f"✅ گشتن تمام شد. {added_count} پست جدید اضافه شد (مجموع صف: {len(queue)})", ""]
+    for ch, report in per_channel_report.items():
+        summary_lines.append(f"• {ch}: {report}")
+
+    print("\n".join(summary_lines))
+    send_bot_message("\n".join(summary_lines))
 
 
 if __name__ == "__main__":
