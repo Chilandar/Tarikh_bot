@@ -2,7 +2,13 @@
 """
 اسکریپت اصلی زمان‌بندی. کاراش:
   ۱. چک می‌کنه پست‌هایی که قبلاً زمان‌بندی کرده هنوز سرجاشون هستن یا حذف شدن.
-  ۲. اسلات‌های خالیِ ۲ روز آینده رو با محتوای مناسب پر می‌کنه.
+  ۲. اسلات‌های خالیِ چند روز آینده رو با محتوای مناسب پر می‌کنه.
+
+قوانین اسلات‌ها (به‌وقت تهران):
+  ۱۰:۰۰ و ۱۳:۰۰  -> عمومی
+  ۱۶:۰۰          -> یکی‌درمیون: سخن بزرگان / تصاویر ایران قدیم
+  ۱۹:۰۰          -> یک پست حکایت/داستان/شعر + ۲ کتاب (مستقل از هم)
+  ۲۲:۰۰          -> دست‌نخورده، متعلق به خود کاربره
 
 اجرا: python schedule_posts.py
 """
@@ -16,7 +22,7 @@ from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import clean_channel_post_text
 from telethon.tl.functions.messages import GetScheduledHistoryRequest
 
-LOOKAHEAD_DAYS = 14  # تا ۲ هفته جلوتر رو در نظر می‌گیره تا کل صف به‌مرور جا بشه
+LOOKAHEAD_DAYS = 14
 ALTERNATOR_FILE = config.STATE_DIR + "/alternator.json"
 
 
@@ -71,10 +77,14 @@ def get_16_category(alternator: dict) -> str:
     return nxt
 
 
+def has_media(item: dict) -> bool:
+    return bool(item.get("media_type")) or bool(item.get("has_photo"))
+
+
 def send_post(client, entity, item: dict, schedule_dt: datetime.datetime):
     final_text = clean_channel_post_text(item["text"])
 
-    if item.get("has_photo"):
+    if has_media(item):
         source_msg = client.get_messages(item["channel"], ids=item["message_id"])
         if not source_msg or not source_msg.media:
             return None
@@ -124,6 +134,9 @@ def main():
     scheduled = load_json(config.SCHEDULED_FILE, [])
     alternator = load_json(ALTERNATOR_FILE, {})
 
+    books_scheduled_count = 0
+    posts_scheduled_count = 0
+
     with get_client() as client:
         entity = client.get_entity(config.TARGET_CHANNEL)
         client.parse_mode = "html"
@@ -147,36 +160,37 @@ def main():
                     continue
                 msg_id = send_post(client, entity, item, slot_dt)
                 if msg_id is None:
-                    print(f"⚠️ پست دسته {category} به‌خاطر نبودن عکس رد شد.")
+                    print(f"⚠️ پست دسته {category} به‌خاطر نبودن مدیا رد شد.")
                     continue
                 scheduled.append({"slot_key": base_key, "message_id": msg_id, "type": "post"})
                 occupied_slots.add(base_key)
+                posts_scheduled_count += 1
 
             elif hour == 19:
-                base_key = f"19-{slot_dt.date()}"
-                if base_key in occupied_slots:
-                    continue
-
-                hekayat_item = pop_best(post_queue, category=config.CATEGORY_HEKAYAT)
-                if hekayat_item:
-                    msg_id = send_post(client, entity, hekayat_item, slot_dt)
-                    if msg_id is None:
-                        print("⚠️ پست حکایت به‌خاطر مشکل مدیا رد شد.")
-                    else:
-                        scheduled.append({"slot_key": base_key, "message_id": msg_id, "type": "post"})
-                        occupied_slots.add(base_key)
+                hekayat_base_key = f"19-hekayat-{slot_dt.date()}"
+                if hekayat_base_key not in occupied_slots:
+                    hekayat_item = pop_best(post_queue, category=config.CATEGORY_HEKAYAT)
+                    if hekayat_item:
+                        msg_id = send_post(client, entity, hekayat_item, slot_dt)
+                        if msg_id is None:
+                            print("⚠️ پست حکایت به‌خاطر مشکل مدیا رد شد.")
+                        else:
+                            scheduled.append({"slot_key": hekayat_base_key, "message_id": msg_id, "type": "post"})
+                            occupied_slots.add(hekayat_base_key)
+                            posts_scheduled_count += 1
 
                 for i in range(config.BOOKS_PER_SLOT):
+                    book_slot_key = f"19-book-{slot_dt.date()}-{i}"
+                    if book_slot_key in occupied_slots:
+                        continue
                     book_item = pop_next_book(book_queue)
                     if not book_item:
                         break
                     book_slot_dt = slot_dt + datetime.timedelta(minutes=2 * (i + 1))
-                    book_slot_key = f"19-book-{slot_dt.date()}-{i}"
-                    if book_slot_key in occupied_slots:
-                        continue
                     msg_id = send_book(client, entity, book_item, book_slot_dt)
                     scheduled.append({"slot_key": book_slot_key, "message_id": msg_id, "type": "book"})
                     occupied_slots.add(book_slot_key)
+                    books_scheduled_count += 1
 
             else:
                 if slot_key in occupied_slots:
@@ -192,13 +206,17 @@ def main():
                     continue
                 scheduled.append({"slot_key": slot_key, "message_id": msg_id, "type": "post"})
                 occupied_slots.add(slot_key)
+                posts_scheduled_count += 1
 
     save_json(config.POST_QUEUE_FILE, post_queue)
     save_json(config.BOOK_QUEUE_FILE, book_queue)
     save_json(config.SCHEDULED_FILE, scheduled)
     save_json(ALTERNATOR_FILE, alternator)
 
-    print(f"وضعیت زمان‌بندی به‌روزرسانی شد. تعداد پست‌های زمان‌بندی‌شده‌ی فعال: {len(scheduled)}")
+    summary = f"وضعیت زمان‌بندی به‌روزرسانی شد. {posts_scheduled_count} پست و {books_scheduled_count} کتاب جدید زمان‌بندی شد (مجموع فعال: {len(scheduled)})"
+    print(summary)
+    if posts_scheduled_count or books_scheduled_count:
+        send_bot_message(f"📅 {summary}")
 
 
 if __name__ == "__main__":
