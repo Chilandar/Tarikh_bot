@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 اسکریپت اصلی گشتن تاریخچه‌ی کانال‌ها.
-دیگه خودش مستقیم با تلگرام Bot API تماس نمی‌گیره (این کار توسط check_telegram.py
-انجام می‌شه) - فقط فایل پرچم state/scan_requested.json رو چک می‌کنه. اگه خاموش
-بود، بلافاصله بدون هیچ تغییری تموم می‌شه.
+فقط فایل پرچم state/scan_requested.json رو چک می‌کنه (خودِ getUpdates توسط
+check_telegram.py انجام می‌شه). بودجه‌ی HISTORY_MESSAGES_PER_RUN به‌طور
+یک‌درمیون (round-robin) بین کانال‌ها تقسیم می‌شه.
 
-بودجه‌ی HISTORY_MESSAGES_PER_RUN به‌طور یک‌درمیون (round-robin) بین همه‌ی
-کانال‌های فعال تقسیم می‌شه.
+دو محافظ کیفیت هم داره:
+  - تشخیص مدیا حالا هر نوع (عکس فشرده، فیلم، عکس/فیلم به‌شکل فایل) رو می‌بینه.
+  - قبل از اضافه‌کردن هر پست، هش متنش با پست‌های قبلاً دیده‌شده مقایسه می‌شه.
 
 اجرا: python scan_history.py
 """
@@ -14,7 +15,7 @@
 import datetime
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message
-from text_utils import detect_category
+from text_utils import detect_category, text_hash_for_dedupe
 
 import pytz
 
@@ -38,16 +39,30 @@ def score_message(text: str, views: int, forwards: int, avg_views: float) -> flo
     return view_ratio + (forwards or 0) * 2
 
 
-class ChannelScanner:
-    """پیام‌های واجدشرایط یک کانال رو یکی‌یکی برمی‌گردونه - برای حالت round-robin."""
+def detect_media_type(msg):
+    if msg.photo:
+        return "photo"
+    if msg.video:
+        return "video"
+    if msg.document:
+        mime = (msg.document.mime_type or "")
+        if mime.startswith("image/"):
+            return "photo"
+        if mime.startswith("video/"):
+            return "video"
+    return None
 
-    def __init__(self, client, channel, state, cutoff, stats):
+
+class ChannelScanner:
+    def __init__(self, client, channel, state, cutoff, stats, seen_hashes):
         self.channel = channel
         self.state = state
         self.cutoff = cutoff
         self.stats = stats
+        self.seen_hashes = seen_hashes
         self.scanned = 0
         self.added = 0
+        self.duplicates_skipped = 0
         self.done = False
 
         entity = client.get_entity(channel)
@@ -75,24 +90,31 @@ class ChannelScanner:
                 continue
 
             text = msg.message or ""
-            has_photo = bool(msg.photo)
+            media_type = detect_media_type(msg)
+            has_media = media_type is not None
 
             if not (config.MIN_TEXT_LEN <= len(text) <= config.MAX_TEXT_LEN):
                 continue
 
-            category = detect_category(text)
-            if config.CATEGORY_REQUIRES_IMAGE.get(category, False) and not has_photo:
+            text_hash = text_hash_for_dedupe(text)
+            if text_hash in self.seen_hashes:
+                self.duplicates_skipped += 1
+                continue
+
+            category = detect_category(text, has_media=has_media)
+            if config.CATEGORY_REQUIRES_IMAGE.get(category, False) and not has_media:
                 continue
 
             avg_views = update_channel_average(self.stats, self.channel, msg.views or 0)
             score = score_message(text, msg.views or 0, msg.forwards or 0, avg_views)
 
+            self.seen_hashes[text_hash] = True
             self.added += 1
             return {
                 "channel": self.channel,
                 "message_id": msg.id,
                 "text": text,
-                "has_photo": has_photo,
+                "media_type": media_type,
                 "category": category,
                 "score": round(score, 3),
                 "used": False,
@@ -116,9 +138,11 @@ def main():
     progress = load_json(config.HISTORY_PROGRESS_FILE, {})
     queue = load_json(config.POST_QUEUE_FILE, [])
     stats = load_json(config.CHANNEL_STATS_FILE, {})
+    seen_hashes = load_json(config.SEEN_TEXT_HASHES_FILE, {})
 
     remaining_budget = config.HISTORY_MESSAGES_PER_RUN
     added_count = 0
+    total_duplicates = 0
 
     with get_client() as client:
         scanners = []
@@ -127,7 +151,7 @@ def main():
             if state.get("finished"):
                 continue
             progress[channel] = state
-            scanners.append(ChannelScanner(client, channel, state, cutoff, stats))
+            scanners.append(ChannelScanner(client, channel, state, cutoff, stats, seen_hashes))
 
         while remaining_budget > 0 and scanners:
             still_active = []
@@ -144,10 +168,10 @@ def main():
                     still_active.append(scanner)
             scanners = still_active
 
-        per_channel_report = {
-            s.channel: f"{s.added} پست اضافه شد (از {s.scanned} پیام بررسی‌شده)"
-            for s in scanners
-        }
+        per_channel_report = {}
+        for s in scanners:
+            per_channel_report[s.channel] = f"{s.added} پست اضافه شد (از {s.scanned} پیام، {s.duplicates_skipped} تکراری رد شد)"
+            total_duplicates += s.duplicates_skipped
         for channel in config.SOURCE_CHANNELS:
             if channel not in per_channel_report:
                 if progress.get(channel, {}).get("finished"):
@@ -159,8 +183,12 @@ def main():
     save_json(config.HISTORY_PROGRESS_FILE, progress)
     save_json(config.POST_QUEUE_FILE, queue)
     save_json(config.CHANNEL_STATS_FILE, stats)
+    save_json(config.SEEN_TEXT_HASHES_FILE, seen_hashes)
 
-    summary_lines = [f"✅ گشتن تمام شد. {added_count} پست جدید اضافه شد (مجموع صف: {len(queue)})", ""]
+    summary_lines = [
+        f"✅ گشتن تمام شد. {added_count} پست جدید اضافه شد (مجموع صف: {len(queue)}، {total_duplicates} تکراری رد شد)",
+        "",
+    ]
     for ch, report in per_channel_report.items():
         summary_lines.append(f"• {ch}: {report}")
 
