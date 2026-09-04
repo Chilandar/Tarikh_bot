@@ -6,7 +6,7 @@
     "has_photo": true,
     "category": "general",
     "score": 123.0,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -528,7 +528,7 @@
     "has_photo": true,
     "category": "general",
     "score": 97.549,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
