@@ -3,7 +3,6 @@ name: Tarikhgan Bot
 on:
   schedule:
     - cron: "0 * * * *"
-    - cron: "0 */6 * * *"
   workflow_dispatch: {}
 
 jobs:
@@ -21,7 +20,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Check for /scan command and scan if requested
+      - name: Check Telegram for new messages (command + books)
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_OWNER_USER_ID: ${{ secrets.TG_OWNER_USER_ID }}
+        run: python check_telegram.py
+
+      - name: Scan channel history (only if /scan was requested)
         env:
           TG_API_ID: ${{ secrets.TG_API_ID }}
           TG_API_HASH: ${{ secrets.TG_API_HASH }}
@@ -30,15 +35,7 @@ jobs:
           TG_OWNER_USER_ID: ${{ secrets.TG_OWNER_USER_ID }}
         run: python scan_history.py
 
-      - name: Process forwarded books
-        if: github.event.schedule == '0 */6 * * *' || github.event_name == 'workflow_dispatch'
-        env:
-          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-          TG_OWNER_USER_ID: ${{ secrets.TG_OWNER_USER_ID }}
-        run: python process_books.py
-
       - name: Fill / verify schedule slots
-        if: github.event.schedule == '0 */6 * * *' || github.event_name == 'workflow_dispatch'
         env:
           TG_API_ID: ${{ secrets.TG_API_ID }}
           TG_API_HASH: ${{ secrets.TG_API_HASH }}
