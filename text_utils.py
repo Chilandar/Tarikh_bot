@@ -9,6 +9,11 @@ import html
 import hashlib
 import config
 
+CHARS_PER_TELEGRAM_LINE = 40
+
+YEAR_PATTERN = re.compile(r"(سال\s+)?\b1[0-9]{3}\b")
+
+PLACE_KEYWORDS = ["موزه", "شهر", "کشور", "خیابان", "میدان", "کوچه", "استان", "روستا"]
 
 def normalize_text_for_dedupe(text: str) -> str:
     text = text or ""
