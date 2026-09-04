@@ -53,20 +53,19 @@ def _is_short_photo_caption(text: str) -> bool:
 def detect_category(text: str, has_media: bool = False) -> str:
     text = text or ""
 
+    # ۱. اول حکایت/داستان/شعر
     for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_HEKAYAT]:
         if keyword in text:
             return config.CATEGORY_HEKAYAT
 
+    # ۲. بعد سخن بزرگان
     for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_SOKHAN_BOZORGAN]:
         if keyword in text:
             return config.CATEGORY_SOKHAN_BOZORGAN
 
+    # ۳. تصاویر ایران قدیم: تنها ملاک، عکس/فیلم + توضیح کوتاه (۱ تا ۳ خط)
     if has_media and _is_short_photo_caption(text):
         return config.CATEGORY_AKS_IRAN_QADIM
-
-    for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_AKS_IRAN_QADIM]:
-        if keyword in text:
-            return config.CATEGORY_AKS_IRAN_QADIM
 
     return config.CATEGORY_GENERAL
 
