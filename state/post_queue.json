@@ -168,7 +168,7 @@
     "has_photo": false,
     "category": "general",
     "score": 21.0,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -177,7 +177,7 @@
     "has_photo": true,
     "category": "general",
     "score": 22.69,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -195,7 +195,7 @@
     "has_photo": true,
     "category": "general",
     "score": 20.69,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -258,7 +258,7 @@
     "has_photo": true,
     "category": "general",
     "score": 24.651,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -267,7 +267,7 @@
     "has_photo": true,
     "category": "general",
     "score": 20.651,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -294,7 +294,7 @@
     "has_photo": true,
     "category": "general",
     "score": 20.64,
-    "used": false
+    "used": true
   },
   {
     "channel": "AsrTarikh",
@@ -420,7 +420,7 @@
     "has_photo": true,
     "category": "general",
     "score": 16.907,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -438,7 +438,7 @@
     "has_photo": true,
     "category": "general",
     "score": 24.904,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -690,7 +690,7 @@
     "has_photo": true,
     "category": "general",
     "score": 22.976,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -726,7 +726,7 @@
     "has_photo": true,
     "category": "general",
     "score": 22.977,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -762,7 +762,7 @@
     "has_photo": true,
     "category": "general",
     "score": 22.977,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -780,7 +780,7 @@
     "media_type": "photo",
     "category": "aks_iran_qadim",
     "score": 53.229,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
