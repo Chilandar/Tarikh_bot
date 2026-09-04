@@ -5,14 +5,12 @@
 """
 
 import re
+import html
+import hashlib
 import config
 
+
 def normalize_text_for_dedupe(text: str) -> str:
-    """
-    متن رو برای مقایسه‌ی «آیا این پست تکراریه؟» ساده‌سازی می‌کنه: فاصله‌های
-    اضافه، ایموجی، و علائم نگارشی رو حذف می‌کنه تا نسخه‌های کمی متفاوت از
-    یک متنِ کپی‌شده هم به‌عنوان یکی شناسایی بشن.
-    """
     text = text or ""
     text = re.sub(r"[\U0001F300-\U0001FAFF\u2600-\u27BF]", "", text)
     text = re.sub(r"[^\w\s]", "", text)
@@ -21,7 +19,6 @@ def normalize_text_for_dedupe(text: str) -> str:
 
 
 def text_hash_for_dedupe(text: str) -> str:
-    import hashlib
     normalized = normalize_text_for_dedupe(text)
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
@@ -39,20 +36,38 @@ def clean_channel_post_text(original_text: str) -> str:
     text = USERNAME_RE.sub("", text)
     text = TME_LINK_RE.sub("", text)
     text = text.rstrip()
-    return f"{text}\n\n{config.SIGNATURE}"
+    bold_text = f"<b>{html.escape(text)}</b>"
+    return f"{bold_text}\n\n{config.SIGNATURE}"
 
 
 # ---------------------------------------------------------------------------
-# تشخیص دسته‌بندی محتوا بر اساس کلیدواژه
+# تشخیص دسته‌بندی محتوا
 # ---------------------------------------------------------------------------
+
+def _is_short_photo_caption(text: str) -> bool:
+    text = text or ""
+    line_count = text.count("\n") + 1
+    return line_count <= 3 and len(text) <= 220
+
 
 def detect_category(text: str, has_media: bool = False) -> str:
     text = text or ""
-    for category, keywords in config.CATEGORY_KEYWORDS.items():
-        if any(keyword in text for keyword in keywords):
-            return category
-    if has_media and len(text) <= 150:
+
+    for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_HEKAYAT]:
+        if keyword in text:
+            return config.CATEGORY_HEKAYAT
+
+    for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_SOKHAN_BOZORGAN]:
+        if keyword in text:
+            return config.CATEGORY_SOKHAN_BOZORGAN
+
+    if has_media and _is_short_photo_caption(text):
         return config.CATEGORY_AKS_IRAN_QADIM
+
+    for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_AKS_IRAN_QADIM]:
+        if keyword in text:
+            return config.CATEGORY_AKS_IRAN_QADIM
+
     return config.CATEGORY_GENERAL
 
 
@@ -101,7 +116,6 @@ def process_book_caption(raw_caption: str):
     author_line = None
     translator_line = None
     volume_number = None
-    signature_seen = False
     first_line = None
 
     for raw_line in lines:
@@ -111,7 +125,6 @@ def process_book_caption(raw_caption: str):
             continue
 
         if CHANNEL_ID_RE.match(line):
-            signature_seen = True
             continue
 
         vol_match = VOLUME_RE.search(line)
@@ -148,7 +161,8 @@ def process_book_caption(raw_caption: str):
     if volume_number:
         body_lines.append(f"📕 جلد {volume_number}")
 
-    clean_caption = "\n".join(body_lines) + f"\n\n{config.SIGNATURE}"
+    bold_body = f"<b>{html.escape(chr(10).join(body_lines))}</b>"
+    clean_caption = f"{bold_body}\n\n{config.SIGNATURE}"
 
     return {
         "clean_caption": clean_caption,
