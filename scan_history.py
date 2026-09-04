@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 """
 اسکریپت اصلی گشتن تاریخچه‌ی کانال‌ها.
-فقط فایل پرچم state/scan_requested.json رو چک می‌کنه (خودِ getUpdates توسط
-check_telegram.py انجام می‌شه). بودجه‌ی HISTORY_MESSAGES_PER_RUN به‌طور
-یک‌درمیون (round-robin) بین کانال‌ها تقسیم می‌شه.
+فقط فایل پرچم state/scan_requested.json رو چک می‌کنه.
 
-دو محافظ کیفیت هم داره:
-  - تشخیص مدیا حالا هر نوع (عکس فشرده، فیلم، عکس/فیلم به‌شکل فایل) رو می‌بینه.
-  - قبل از اضافه‌کردن هر پست، هش متنش با پست‌های قبلاً دیده‌شده مقایسه می‌شه.
+محافظ‌های کیفیت:
+  - تشخیص مدیا هر نوع (عکس فشرده، فیلم، عکس/فیلم به‌شکل فایل) رو می‌بینه.
+  - اگه یک کانال عکس رو تنها (بدون کپشن) بفرسته و کپشنش رو توی پیام بعدی
+    جداگانه بفرسته، این دو پیام رو به‌عنوان یک پست واحد (عکس + متن) می‌بینه.
+  - قبل از اضافه‌کردن هر پست، هش متنش با پست‌های قبلاً دیده‌شده مقایسه می‌شه
+    تا محتوای تکراری (که چند کانال از هم کپی می‌کنن) دوباره اضافه نشه.
+  - صف فعلی هم یک‌بار از تکراری‌های قدیمی (قبل از فعال‌شدن این قابلیت) پاک می‌شه.
 
 اجرا: python scan_history.py
 """
@@ -18,6 +20,9 @@ from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import detect_category, text_hash_for_dedupe
 
 import pytz
+
+PAIRING_MAX_SECONDS = 300
+BARE_MEDIA_TEXT_LIMIT = 3
 
 
 def get_cutoff_date():
@@ -53,6 +58,17 @@ def detect_media_type(msg):
     return None
 
 
+def dedupe_existing_queue(queue: list, seen_hashes: dict) -> list:
+    deduped = []
+    for item in queue:
+        h = text_hash_for_dedupe(item.get("text", ""))
+        if h in seen_hashes:
+            continue
+        seen_hashes[h] = True
+        deduped.append(item)
+    return deduped
+
+
 class ChannelScanner:
     def __init__(self, client, channel, state, cutoff, stats, seen_hashes):
         self.channel = channel
@@ -64,6 +80,7 @@ class ChannelScanner:
         self.added = 0
         self.duplicates_skipped = 0
         self.done = False
+        self.pending_photo = None
 
         entity = client.get_entity(channel)
         self._iterator = client.iter_messages(
@@ -72,6 +89,32 @@ class ChannelScanner:
             offset_id=state["last_id"],
             limit=config.HISTORY_RAW_SCAN_CAP,
         )
+
+    def _build_item(self, message_id, text, media_type, views=0, forwards=0):
+        text_hash = text_hash_for_dedupe(text)
+        if text_hash in self.seen_hashes:
+            self.duplicates_skipped += 1
+            return None
+
+        has_media = media_type is not None
+        category = detect_category(text, has_media=has_media)
+        if config.CATEGORY_REQUIRES_IMAGE.get(category, False) and not has_media:
+            return None
+
+        avg_views = update_channel_average(self.stats, self.channel, views or 0)
+        score = score_message(text, views or 0, forwards or 0, avg_views)
+
+        self.seen_hashes[text_hash] = True
+        self.added += 1
+        return {
+            "channel": self.channel,
+            "message_id": message_id,
+            "text": text,
+            "media_type": media_type,
+            "category": category,
+            "score": round(score, 3),
+            "used": False,
+        }
 
     def next_qualifying_item(self):
         if self.done:
@@ -86,39 +129,37 @@ class ChannelScanner:
                 self.done = True
                 return None
 
-            if not msg.text and not msg.message:
-                continue
-
             text = msg.message or ""
             media_type = detect_media_type(msg)
-            has_media = media_type is not None
 
+            if media_type:
+                if config.MIN_TEXT_LEN <= len(text) <= config.MAX_TEXT_LEN:
+                    self.pending_photo = None
+                    item = self._build_item(msg.id, text, media_type, msg.views, msg.forwards)
+                    if item:
+                        return item
+                    continue
+                if len(text) <= BARE_MEDIA_TEXT_LIMIT:
+                    self.pending_photo = {"message_id": msg.id, "media_type": media_type, "date": msg.date}
+                    continue
+                self.pending_photo = None
+                continue
+
+            if self.pending_photo and (msg.date - self.pending_photo["date"]).total_seconds() <= PAIRING_MAX_SECONDS:
+                pending = self.pending_photo
+                self.pending_photo = None
+                if config.MIN_TEXT_LEN <= len(text) <= config.MAX_TEXT_LEN:
+                    item = self._build_item(pending["message_id"], text, pending["media_type"], msg.views, msg.forwards)
+                    if item:
+                        return item
+                continue
+
+            self.pending_photo = None
             if not (config.MIN_TEXT_LEN <= len(text) <= config.MAX_TEXT_LEN):
                 continue
-
-            text_hash = text_hash_for_dedupe(text)
-            if text_hash in self.seen_hashes:
-                self.duplicates_skipped += 1
-                continue
-
-            category = detect_category(text, has_media=has_media)
-            if config.CATEGORY_REQUIRES_IMAGE.get(category, False) and not has_media:
-                continue
-
-            avg_views = update_channel_average(self.stats, self.channel, msg.views or 0)
-            score = score_message(text, msg.views or 0, msg.forwards or 0, avg_views)
-
-            self.seen_hashes[text_hash] = True
-            self.added += 1
-            return {
-                "channel": self.channel,
-                "message_id": msg.id,
-                "text": text,
-                "media_type": media_type,
-                "category": category,
-                "score": round(score, 3),
-                "used": False,
-            }
+            item = self._build_item(msg.id, text, None, msg.views, msg.forwards)
+            if item:
+                return item
 
         self.done = True
         return None
@@ -139,6 +180,10 @@ def main():
     queue = load_json(config.POST_QUEUE_FILE, [])
     stats = load_json(config.CHANNEL_STATS_FILE, {})
     seen_hashes = load_json(config.SEEN_TEXT_HASHES_FILE, {})
+
+    before_count = len(queue)
+    queue = dedupe_existing_queue(queue, seen_hashes)
+    removed_old_duplicates = before_count - len(queue)
 
     remaining_budget = config.HISTORY_MESSAGES_PER_RUN
     added_count = 0
@@ -186,7 +231,8 @@ def main():
     save_json(config.SEEN_TEXT_HASHES_FILE, seen_hashes)
 
     summary_lines = [
-        f"✅ گشتن تمام شد. {added_count} پست جدید اضافه شد (مجموع صف: {len(queue)}، {total_duplicates} تکراری رد شد)",
+        f"✅ گشتن تمام شد. {added_count} پست جدید اضافه شد (مجموع صف: {len(queue)})",
+        f"🧹 {removed_old_duplicates} تکراری قدیمی از صف حذف شد، {total_duplicates} تکراری جدید رد شد",
         "",
     ]
     for ch, report in per_channel_report.items():
