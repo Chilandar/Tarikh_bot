@@ -13,7 +13,8 @@ CHARS_PER_TELEGRAM_LINE = 40
 
 YEAR_PATTERN = re.compile(r"(سال\s+)?\b1[0-9]{3}\b")
 
-PLACE_KEYWORDS = ["موزه", "شهر", "کشور", "خیابان", "میدان", "کوچه", "استان", "روستا"]
+PLACE_KEYWORDS = ["موزه", "شهر", "کشور", "خیابان", "میدان", "استان", "کوچه", "روستا"]
+
 
 def normalize_text_for_dedupe(text: str) -> str:
     text = text or ""
@@ -49,20 +50,7 @@ def clean_channel_post_text(original_text: str) -> str:
 # تشخیص دسته‌بندی محتوا
 # ---------------------------------------------------------------------------
 
-
-
-def detect_category(text: str, has_media: bool = False) -> str:
-    text = text or ""
-
-    # ۱. اول حکایت/داستان/شعر
-    for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_HEKAYAT]:
-        if keyword in text:
-            return def _estimate_telegram_lines(text: str) -> int:
-    """
-    تعداد خطی که این متن توی تلگرام واقعاً اشغال می‌کنه رو تخمین می‌زنه -
-    هم خط‌های واقعی (\\n) رو حساب می‌کنه، هم اینکه هر پاراگراف طولانی خودش
-    به چند خط شکسته می‌شه (بر اساس عرض معمول صفحه‌ی موبایل).
-    """
+def _estimate_telegram_lines(text: str) -> int:
     text = text or ""
     paragraphs = text.split("\n")
     total_lines = 0
@@ -76,11 +64,6 @@ def detect_category(text: str, has_media: bool = False) -> str:
 
 
 def _is_short_photo_caption(text: str) -> bool:
-    """
-    آیا این متن شبیه یک کپشن کوتاه (۱ تا ۳ خطِ واقعیِ تلگرام) برای یک عکس
-    تاریخیه؟ این‌جور پست‌ها معمولاً یک توضیح کوتاهن، با اشاره به سال
-    (شمسی/قمری/میلادی) و/یا مکان (شهر، کشور، موزه...).
-    """
     return _estimate_telegram_lines(text) <= 3
 
 
@@ -88,14 +71,20 @@ def _mentions_year_or_place(text: str) -> bool:
     text = text or ""
     if YEAR_PATTERN.search(text):
         return True
-    return any(keyword in text for keyword in PLACE_KEYWORDS)config.CATEGORY_HEKAYAT
+    return any(keyword in text for keyword in PLACE_KEYWORDS)
 
-    # ۲. بعد سخن بزرگان
+
+def detect_category(text: str, has_media: bool = False) -> str:
+    text = text or ""
+
+    for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_HEKAYAT]:
+        if keyword in text:
+            return config.CATEGORY_HEKAYAT
+
     for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_SOKHAN_BOZORGAN]:
         if keyword in text:
             return config.CATEGORY_SOKHAN_BOZORGAN
 
-    # ۳. تصاویر ایران قدیم: تنها ملاک، عکس/فیلم + توضیح کوتاه (۱ تا ۳ خط)
     if has_media and _is_short_photo_caption(text):
         return config.CATEGORY_AKS_IRAN_QADIM
 
