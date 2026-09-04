@@ -38,5 +38,20 @@
     "slot_key": "19-book-2026-09-04-0",
     "message_id": 2155,
     "type": "book"
+  },
+  {
+    "slot_key": "2026-09-06T10:00:00+03:30",
+    "message_id": 2156,
+    "type": "post"
+  },
+  {
+    "slot_key": "2026-09-06T13:00:00+03:30",
+    "message_id": 2157,
+    "type": "post"
+  },
+  {
+    "slot_key": "16-2026-09-06",
+    "message_id": 2158,
+    "type": "post"
   }
 ]

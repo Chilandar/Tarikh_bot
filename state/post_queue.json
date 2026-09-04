@@ -312,7 +312,7 @@
     "has_photo": true,
     "category": "sokhan_bozorgan",
     "score": 425.195,
-    "used": false
+    "used": true
   },
   {
     "channel": "AsrTarikh",
@@ -618,7 +618,7 @@
     "has_photo": false,
     "category": "general",
     "score": 1478.21,
-    "used": false
+    "used": true
   },
   {
     "channel": "ancientir",
@@ -654,7 +654,7 @@
     "has_photo": false,
     "category": "general",
     "score": 1478.045,
-    "used": false
+    "used": true
   },
   {
     "channel": "ancientir",
