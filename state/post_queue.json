@@ -631,60 +631,6 @@
   },
   {
     "channel": "World5History",
-    "message_id": 164,
-    "text": "مادر یهودی در حال صحبت و دلداری به پسر اسیر خود در اردوگاه یهودیان 1942",
-    "has_photo": true,
-    "category": "general",
-    "score": 13.199,
-    "used": false
-  },
-  {
-    "channel": "IranAncient",
-    "message_id": 52,
-    "text": "تصویری از ماکت یافته شده در تپه باستانی شوش \nکشف شده توسط ژاک دمورگان ، هم اکنون موزه لوور\nساخته شده توسط شیلهاک اینشوشیناک قرن 12 قبل از میلاد که یک مراسم مذهبی را نشان می دهد\n\n@ElamiteHistorian",
-    "has_photo": true,
-    "category": "aks_iran_qadim",
-    "score": 26.664,
-    "used": true
-  },
-  {
-    "channel": "AsrTarikh",
-    "message_id": 39100,
-    "text": "درد بزرگ امروز کشور ما دقیقاً \nهمین صحبت‌های جناب دکترِ...!!\n\n خواهشاً این کلیپ‌رو تا آخر ببینید و \nبرای همه ارسال کنید!!!🙏🙏\n\nفقط ببین جای تاسف داره همین🤔🤔🤔🤔\n\n@AsrTarikh",
-    "has_photo": false,
-    "category": "general",
-    "score": 1478.045,
-    "used": true
-  },
-  {
-    "channel": "ancientir",
-    "message_id": 14,
-    "text": "دو تن از بانوان نيروي هوايي ارتش\n\nچی بودیم چی شدیم!؟\n\n@ancientir",
-    "has_photo": true,
-    "category": "general",
-    "score": 88.994,
-    "used": true
-  },
-  {
-    "channel": "World5History",
-    "message_id": 164,
-    "text": "مادر یهودی در حال صحبت و دلداری به پسر اسیر خود در اردوگاه یهودیان 1942",
-    "has_photo": true,
-    "category": "general",
-    "score": 13.192,
-    "used": false
-  },
-  {
-    "channel": "IranAncient",
-    "message_id": 52,
-    "text": "تصویری از ماکت یافته شده در تپه باستانی شوش \nکشف شده توسط ژاک دمورگان ، هم اکنون موزه لوور\nساخته شده توسط شیلهاک اینشوشیناک قرن 12 قبل از میلاد که یک مراسم مذهبی را نشان می دهد\n\n@ElamiteHistorian",
-    "has_photo": true,
-    "category": "aks_iran_qadim",
-    "score": 26.674,
-    "used": true
-  },
-  {
-    "channel": "World5History",
     "message_id": 167,
     "text": "خانمی با پوشش ماسک صورت به روش سنتی در مسقط عمان 1905  tssjahan@",
     "has_photo": true,
@@ -721,236 +667,92 @@
   },
   {
     "channel": "World5History",
-    "message_id": 167,
-    "text": "خانمی با پوشش ماسک صورت به روش سنتی در مسقط عمان 1905  tssjahan@",
-    "has_photo": true,
-    "category": "general",
-    "score": 22.977,
-    "used": true
-  },
-  {
-    "channel": "IranAncient",
-    "message_id": 53,
-    "text": "مجسمه میمون از جنس مرمر \nخوزستان ،تمدن ایلام، قدمت بین سال های 2100 تا 1500 قبل از میلاد \nمحل نگهداری موزه لندن\n\n@ElamiteHistorian",
-    "has_photo": true,
-    "category": "general",
-    "score": 34.837,
-    "used": true
-  },
-  {
-    "channel": "AsrTarikh",
-    "message_id": 39101,
-    "text": "پیشگویی عجیب  در مورد ایران و جهان !\n\n توصیه میکنم حتما ببینید.👌🏻\n\n@AsrTarikh",
-    "has_photo": false,
-    "category": "general",
-    "score": 15458.524,
-    "used": true
-  },
-  {
-    "channel": "ancientir",
-    "message_id": 15,
-    "text": "این فیلم قدیمی‌ترین فیلم گرفته شده از تخت جمشید است!\n\nاین فیلم که مربوط به سال ۱۹۳۱ است یعنی حدود ۹۰ سال قبل! در آن زمان هنوز تخت جمشید مورد کاوش قرار نگرفته بود!\n\n@ancientir",
-    "has_photo": false,
-    "category": "general",
-    "score": 245.011,
-    "used": true
-  },
-  {
-    "channel": "World5History",
-    "message_id": 167,
-    "text": "خانمی با پوشش ماسک صورت به روش سنتی در مسقط عمان 1905  tssjahan@",
-    "has_photo": true,
-    "category": "general",
-    "score": 22.977,
-    "used": true
-  },
-  {
-    "channel": "IranAncient",
-    "message_id": 53,
-    "text": "مجسمه میمون از جنس مرمر \nخوزستان ،تمدن ایلام، قدمت بین سال های 2100 تا 1500 قبل از میلاد \nمحل نگهداری موزه لندن\n\n@ElamiteHistorian",
-    "has_photo": true,
-    "category": "general",
-    "score": 34.842,
-    "used": true
-  },
-  {
-    "channel": "World5History",
-    "message_id": 171,
-    "text": "اسحاق نیوتون در سن 84سالگی و بدون هیچ  رابطه جنسی از دنیا رفت!!! @tssjahan",
+    "message_id": 186,
+    "text": "پرتره مادرو دختر از اولین عکسهای تاربخ   1854 @tssjahan    ",
     "media_type": "photo",
     "category": "aks_iran_qadim",
-    "score": 53.229,
-    "used": true
+    "score": 12.879,
+    "used": false
   },
   {
     "channel": "IranAncient",
-    "message_id": 54,
-    "text": "اولین تصویر کشف شده از کماندار در تمدن ایلام \nکوزه مربوط به هزاره چهارم قبل از میلاد در شوش-خوزستان\nکه تصویر سرباز کماندار بر روی آن حک شده است\n\n@ElamiteHistorian",
-    "media_type": "photo",
-    "category": "general",
-    "score": 14.657,
-    "used": true
-  },
-  {
-    "channel": "AsrTarikh",
-    "message_id": 39105,
-    "text": "#سخنرانی جنجالی #سید_حسن_آقامیری\n\n#گند_زدیم به #زندگی_مردم ...\n\n@AsrTarikh",
-    "media_type": "video",
-    "category": "sokhan_bozorgan",
-    "score": 1007.515,
-    "used": true
-  },
-  {
-    "channel": "ancientir",
-    "message_id": 16,
-    "text": "حدود ۴۰ سال پيش در روزهایی که آغاز درگیری‌های ایران و آمریکا بود، ایران با این تفکر که ما نفت داریم و دنیا به نفت نیاز دارد، آمریکا و کشورهای متحد آمریکا را تهدید به تحریم نفتی می‌کرد!\n\n@ancientir",
-    "media_type": "photo",
-    "category": "general",
-    "score": 107.055,
-    "used": true
-  },
-  {
-    "channel": "World5History",
-    "message_id": 175,
-    "text": "👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆\nاین تصویر امیرکبیر نیست!!!\nیک مامور عالی رتبه ایرانی در اصفهان - حدود سال 1270 خورشیدی\nعکس از: ارنست هولتسر (Ernst Hoeltzer)\nتوضیح: در بعضی از سایت ها و صفحات از این عکس که عکاس آن هولتسراست به عنوان تصویر امیرکبیر یاد می شود.گفتنی است که امیر کبیر در20 دی 1230(خورشیدی) در باغ فین کاشان به قتل رسید در حالی که هولتسر متولد 1214خورشیدی است و در سال 1242 خورشیدی برای اولین بار به ایران آمد.\n\nTssjahan@",
-    "media_type": null,
-    "category": "sokhan_bozorgan",
-    "score": 22.896,
-    "used": true
-  },
-  {
-    "channel": "IranAncient",
-    "message_id": 56,
-    "text": "تندیس متعلق به 1800 قبل از میلاد در دوره سوکل مخ ها ، مشهور به ایزد دست طلایی\nحدس بر این می باشد که تندیس متعلق به اینشوشیناک باشد\n\n@ElamiteHistorian",
+    "message_id": 66,
+    "text": "تصویری گرافیکی از این سنگ نگاره \n\n@ElamiteHistorian",
     "media_type": "photo",
     "category": "aks_iran_qadim",
-    "score": 18.611,
+    "score": 12.614,
     "used": false
   },
   {
     "channel": "AsrTarikh",
-    "message_id": 39106,
-    "text": "محمود احمدی نژاد وقتی که بخشدار ماکو بود. ۱۳۶۰ خورشیدی\n\n@AsrTarikh",
+    "message_id": 39110,
+    "text": "تهران-شهر نو -زمانى كه فحشا مركزيت داشت!\n\n@bi3ansor",
     "media_type": "photo",
     "category": "aks_iran_qadim",
-    "score": 515.026,
-    "used": true
+    "score": 220.749,
+    "used": false
   },
   {
     "channel": "ancientir",
-    "message_id": 17,
-    "text": "حكم اختلاس ۳متر سيم مسی در دهه ۴۰\nسه ماه حبس و انفصال ابدی از خدمات دولتی!\n\n@ancientir",
-    "media_type": "photo",
-    "category": "aks_iran_qadim",
-    "score": 185.067,
-    "used": true
-  },
-  {
-    "channel": "World5History",
-    "message_id": 176,
-    "text": " تصویری از امیرعباس هویدا در محل کار خود. جالب است بدانید اولین کامپیوتر را امیر عباس هویدا در سال 1354 وارد ایران کرد.          @Tssjahan",
-    "media_type": "photo",
-    "category": "aks_iran_qadim",
-    "score": 102.063,
-    "used": true
-  },
-  {
-    "channel": "IranAncient",
-    "message_id": 57,
-    "text": "ظرف سفالین کشف شده در شوش - خوزستان\nاوایل هزاره سوم قبل از میلاد \nزمان تقریبی بین 3000 تا 2800 قبل از میلاد\n\n@ElamiteHistorian",
-    "media_type": "photo",
-    "category": "aks_iran_qadim",
-    "score": 6.606,
-    "used": false
-  },
-  {
-    "channel": "World5History",
-    "message_id": 181,
-    "text": "ضمن عرض سلام و ادب و احترام خدمت تمامی اعضا محترم گروه.\n\nضمن ابراز خرسندی از ایامی که در خدمت و محضر شما بزرگواران بودم که حقا و انصافا ، مطالب زیادی را از شما بزرگواران یاد گرفتم ، لیکن با عرض پوزش از حضور تمام سروران گرامی، اینجانب به دلیل مشغله زیاد و نداشتن مطالب مناسب برای گروه مضافا با عنایت به ازدحام پیامها، واقعا کلافه و خسته شده، و نیاز به اندکی استراحت دارم.\n\nلذا ضمن طلب حلالیت از همه شما بزرگواران و با اجازه همه شما عزیزان، پاهامو دراز میکنم❤️❤️❤️👍",
-    "media_type": null,
-    "category": "general",
-    "score": 28.691,
-    "used": true
-  },
-  {
-    "channel": "IranAncient",
-    "message_id": 61,
-    "text": "قطعه ای از دیوار معبد اینشوشیناک در شوش که به وسیله کوتیر ناهونته و شیلهاک اینشوشیناک ساخته شده است قرن 12قبل از میلاد،موزه لوور \n\n@ElamiteHistorian",
-    "media_type": "photo",
-    "category": "aks_iran_qadim",
-    "score": 26.593,
-    "used": false
-  },
-  {
-    "channel": "AsrTarikh",
-    "message_id": 39107,
-    "text": "ببینید عربهای عربستان چه شعاری می دهند :\n\n👈🏼ایرانی بشنو که تو برده وموالی ما هستی.\nایرانی باز هم برو مکه. \n\n@AsrTarikh",
+    "message_id": 22,
+    "text": "آخرین اجرای هایده در کاباره کازابلانکا، پس از این اجرا هایده در خانه برادرزاده اش دچار سکته قلبی می شود و فوت می کند.\n\n@ancientir",
     "media_type": "video",
     "category": "aks_iran_qadim",
-    "score": 1235.035,
-    "used": true
-  },
-  {
-    "channel": "ancientir",
-    "message_id": 20,
-    "text": "‌خدایا به دوستانم:\nعمر جنتی؛\nثروت بابک زنجانی؛\nصدای شجریان؛\nاعتماد به نفس احمدی نژاد؛\nو بی‌خیالی روحانی را عطا بفرما!!!\nو لبانشان را همچون دکتر ظریف خندان بگردان!!!\nالهی آمین🤲\n\n@ancientir",
-    "media_type": "photo",
-    "category": "general",
-    "score": 615.174,
+    "score": 685.131,
     "used": true
   },
   {
     "channel": "World5History",
-    "message_id": 184,
-    "text": "  دکترتوماس هاروی کسی که مغز انیشتن را برای ازمایش از جمجمه اش خارج کرد            @tssjahan            ",
+    "message_id": 187,
+    "text": "از سری عکسهای نخستین تاریخی از دو دختر از خانواده ویکتوریایی 1854   @tssjahan",
     "media_type": "photo",
     "category": "aks_iran_qadim",
-    "score": 33.467,
+    "score": 2.737,
     "used": false
   },
   {
     "channel": "IranAncient",
-    "message_id": 63,
-    "text": "ترجمه یک لوح ایلامی به دست آمده از گورهای شوش که در مورد مردی بدشانس بوده است که سرنوشت خوبی در دنیا نداشته است :  اکنون می خواهم از دنیا بروم ، تو ای خدا و سرور من. می خواهم در آن دنیا حکمم را بشنوم و بر پاهایت بوسه زنم. تو میگذاری که من به انتظارت بمانم. سرانجام تو ای خدای من میگذاری که دنیای مردگان پذیرای من شود. هرچند که بر روی زمین سرنوشت من جز منجلابی از رنج و عذاب نبود و تو بر روی زمین نکبت بار، در بیابانی از قحطی جز اندکی آب و سبزه به من ندادی!!!\n\n@ElamiteHistorian",
-    "media_type": null,
-    "category": "general",
-    "score": 20.619,
-    "used": true
+    "message_id": 67,
+    "text": "تصویری از سنگ نگاره ای در کول فرح که مراسم مذهبی را نشان می دهد\n\n@ElamiteHistorian",
+    "media_type": "photo",
+    "category": "aks_iran_qadim",
+    "score": 14.589,
+    "used": false
   },
   {
     "channel": "AsrTarikh",
-    "message_id": 39109,
-    "text": "متوسط حقوق ماهیانه در افغانستان ۷۷۹۰۰ افغانی یعنی حدود ۲۷ میلیون تومان !\n\nمتوسط حقوق ماهیانه در ایران ۳ میلیون تومان🤔 !\n\n@AsrTarikh",
+    "message_id": 39111,
+    "text": "بازیگران مشهوری که در سال ۹۹ فوت شدند🖤\n\n\n@bi3ansor",
     "media_type": "photo",
-    "category": "aks_iran_qadim",
-    "score": 470.824,
-    "used": true
+    "category": "general",
+    "score": 298.748,
+    "used": false
   },
   {
     "channel": "ancientir",
-    "message_id": 21,
-    "text": "ناصرالدین شاه قاجار پس از اولین سفرش با قطار \"ری\" رو به اطرافیانش می‌کند و می‌گوید:\n «سوار شدن  بر ماشین دودی اوقات ما را خوش کرد.»\n\n همراهان  هم جمله شاه را تصدیق کرده  و هیولای آهنی را از آن پس «ماشین دودی» صدا کردند...\n\nشرکت بلژیکی که مجری قطار در ایران بود، برای آنکه نظر مساعد علما را در مورد قطار نیز جلب کند تا انها  ان را حرام اعلام نکنند  ، مجبور شد قسمتی را در قطار مخصوص علما تعبیه کند ...\n\n@ancientir",
+    "message_id": 23,
+    "text": "‍ در قدیم جام‌های شراب 7 خط داشتن: مزور، فرودینه، اشک، ازرق، بصره، بغداد و خط هفتم که جور نامیده میشد!\n\nجور بالاترین خط جام بود. کسی رو که شراب نوش قهار و حرفه ای بود هفت خط می‌نامیدن. اگر کسی در باده نوشی به مرحله هفت خط نرسیده بود و از روی غرور از ساقی می خواست تا خط جور برایش پر کند معلوم بود که درمانده می‌شد و دوستانش به خاطر حفظ آبرو و جلوگیری از ضایع شدن جور او را سر می‌کشیدن!\n\n\"جور دیگری رو کشیدن\" از اینجا اومده!\n\n@ancientir",
     "media_type": "photo",
-    "category": "sokhan_bozorgan",
-    "score": 91.064,
-    "used": true
+    "category": "general",
+    "score": 675.128,
+    "used": false
   },
   {
     "channel": "World5History",
-    "message_id": 185,
-    "text": "از نخستین عکسهای تاریخ  1854      @tssjahan                 ",
+    "message_id": 188,
+    "text": "تصویری جالب از پدر وپسر در یک مکان بعد 50 سال @tssjahan",
     "media_type": "photo",
     "category": "aks_iran_qadim",
-    "score": 6.835,
+    "score": 29.422,
     "used": false
   },
   {
     "channel": "IranAncient",
-    "message_id": 65,
-    "text": "تصویر سنگ نگاره شماره 1 کول فرح که مراسم قربانی به همراه نواختن موسیقی را نشان میدهد\n\n@ElamiteHistorian",
+    "message_id": 69,
+    "text": "مجسمه الهه ناروندی(الهه جنگ)که به دستور پازورو-اینشوشیناک پادشاه سلسله آوان در 2250 قبل از میلاد ساخته شد. کشف در معبد نین خورساگ شوش و هم اکنون در موزه لوور فرانسه\n\n@ElamiteHistorian",
     "media_type": "photo",
     "category": "aks_iran_qadim",
-    "score": 22.637,
+    "score": 22.69,
     "used": false
   }
 ]
