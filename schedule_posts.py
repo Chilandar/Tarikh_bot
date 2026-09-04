@@ -16,7 +16,7 @@ from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import clean_channel_post_text
 from telethon.tl.functions.messages import GetScheduledHistoryRequest
 
-LOOKAHEAD_DAYS = 2
+LOOKAHEAD_DAYS = 14  # تا ۲ هفته جلوتر رو در نظر می‌گیره تا کل صف به‌مرور جا بشه
 ALTERNATOR_FILE = config.STATE_DIR + "/alternator.json"
 
 
