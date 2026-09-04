@@ -33,7 +33,7 @@
     "has_photo": true,
     "category": "general",
     "score": 45.637,
-    "used": false
+    "used": true
   },
   {
     "channel": "AsrTarikh",
@@ -78,7 +78,7 @@
     "has_photo": true,
     "category": "general",
     "score": 46.664,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -87,7 +87,7 @@
     "has_photo": true,
     "category": "general",
     "score": 34.697,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -96,7 +96,7 @@
     "has_photo": true,
     "category": "general",
     "score": 48.74,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -105,7 +105,7 @@
     "has_photo": true,
     "category": "general",
     "score": 28.723,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -114,7 +114,7 @@
     "has_photo": true,
     "category": "general",
     "score": 56.774,
-    "used": false
+    "used": true
   },
   {
     "channel": "AsrTarikh",
@@ -186,7 +186,7 @@
     "has_photo": true,
     "category": "general",
     "score": 52.761,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -240,7 +240,7 @@
     "has_photo": false,
     "category": "general",
     "score": 40.965,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -249,7 +249,7 @@
     "has_photo": true,
     "category": "aks_iran_qadim",
     "score": 32.679,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -285,7 +285,7 @@
     "has_photo": true,
     "category": "general",
     "score": 34.67,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -339,7 +339,7 @@
     "has_photo": false,
     "category": "general",
     "score": 71.091,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -348,7 +348,7 @@
     "has_photo": false,
     "category": "general",
     "score": 60.977,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -366,7 +366,7 @@
     "has_photo": false,
     "category": "general",
     "score": 44.982,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -384,7 +384,7 @@
     "has_photo": false,
     "category": "general",
     "score": 41.025,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -393,7 +393,7 @@
     "has_photo": false,
     "category": "general",
     "score": 39.318,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -402,7 +402,7 @@
     "has_photo": false,
     "category": "general",
     "score": 59.052,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -411,7 +411,7 @@
     "has_photo": false,
     "category": "sokhan_bozorgan",
     "score": 39.291,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -510,7 +510,7 @@
     "has_photo": true,
     "category": "aks_iran_qadim",
     "score": 67.768,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -519,7 +519,7 @@
     "has_photo": true,
     "category": "aks_iran_qadim",
     "score": 47.59,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -609,7 +609,7 @@
     "has_photo": true,
     "category": "aks_iran_qadim",
     "score": 26.654,
-    "used": false
+    "used": true
   },
   {
     "channel": "AsrTarikh",
@@ -627,7 +627,7 @@
     "has_photo": true,
     "category": "general",
     "score": 88.992,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -645,7 +645,7 @@
     "has_photo": true,
     "category": "aks_iran_qadim",
     "score": 26.664,
-    "used": false
+    "used": true
   },
   {
     "channel": "AsrTarikh",
@@ -663,7 +663,7 @@
     "has_photo": true,
     "category": "general",
     "score": 88.994,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -681,6 +681,96 @@
     "has_photo": true,
     "category": "aks_iran_qadim",
     "score": 26.674,
+    "used": true
+  },
+  {
+    "channel": "World5History",
+    "message_id": 167,
+    "text": "خانمی با پوشش ماسک صورت به روش سنتی در مسقط عمان 1905  tssjahan@",
+    "has_photo": true,
+    "category": "general",
+    "score": 22.976,
     "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 53,
+    "text": "مجسمه میمون از جنس مرمر \nخوزستان ،تمدن ایلام، قدمت بین سال های 2100 تا 1500 قبل از میلاد \nمحل نگهداری موزه لندن\n\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "general",
+    "score": 34.831,
+    "used": true
+  },
+  {
+    "channel": "AsrTarikh",
+    "message_id": 39101,
+    "text": "پیشگویی عجیب  در مورد ایران و جهان !\n\n توصیه میکنم حتما ببینید.👌🏻\n\n@AsrTarikh",
+    "has_photo": false,
+    "category": "general",
+    "score": 15458.789,
+    "used": true
+  },
+  {
+    "channel": "ancientir",
+    "message_id": 15,
+    "text": "این فیلم قدیمی‌ترین فیلم گرفته شده از تخت جمشید است!\n\nاین فیلم که مربوط به سال ۱۹۳۱ است یعنی حدود ۹۰ سال قبل! در آن زمان هنوز تخت جمشید مورد کاوش قرار نگرفته بود!\n\n@ancientir",
+    "has_photo": false,
+    "category": "general",
+    "score": 245.014,
+    "used": true
+  },
+  {
+    "channel": "World5History",
+    "message_id": 167,
+    "text": "خانمی با پوشش ماسک صورت به روش سنتی در مسقط عمان 1905  tssjahan@",
+    "has_photo": true,
+    "category": "general",
+    "score": 22.977,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 53,
+    "text": "مجسمه میمون از جنس مرمر \nخوزستان ،تمدن ایلام، قدمت بین سال های 2100 تا 1500 قبل از میلاد \nمحل نگهداری موزه لندن\n\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "general",
+    "score": 34.837,
+    "used": true
+  },
+  {
+    "channel": "AsrTarikh",
+    "message_id": 39101,
+    "text": "پیشگویی عجیب  در مورد ایران و جهان !\n\n توصیه میکنم حتما ببینید.👌🏻\n\n@AsrTarikh",
+    "has_photo": false,
+    "category": "general",
+    "score": 15458.524,
+    "used": true
+  },
+  {
+    "channel": "ancientir",
+    "message_id": 15,
+    "text": "این فیلم قدیمی‌ترین فیلم گرفته شده از تخت جمشید است!\n\nاین فیلم که مربوط به سال ۱۹۳۱ است یعنی حدود ۹۰ سال قبل! در آن زمان هنوز تخت جمشید مورد کاوش قرار نگرفته بود!\n\n@ancientir",
+    "has_photo": false,
+    "category": "general",
+    "score": 245.011,
+    "used": true
+  },
+  {
+    "channel": "World5History",
+    "message_id": 167,
+    "text": "خانمی با پوشش ماسک صورت به روش سنتی در مسقط عمان 1905  tssjahan@",
+    "has_photo": true,
+    "category": "general",
+    "score": 22.977,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 53,
+    "text": "مجسمه میمون از جنس مرمر \nخوزستان ،تمدن ایلام، قدمت بین سال های 2100 تا 1500 قبل از میلاد \nمحل نگهداری موزه لندن\n\n@ElamiteHistorian",
+    "has_photo": true,
+    "category": "general",
+    "score": 34.842,
+    "used": true
   }
 ]
