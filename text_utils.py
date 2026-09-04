@@ -49,10 +49,6 @@ def clean_channel_post_text(original_text: str) -> str:
 # تشخیص دسته‌بندی محتوا
 # ---------------------------------------------------------------------------
 
-def _is_short_photo_caption(text: str) -> bool:
-    text = text or ""
-    line_count = text.count("\n") + 1
-    return line_count <= 3 and len(text) <= 220
 
 
 def detect_category(text: str, has_media: bool = False) -> str:
@@ -61,7 +57,38 @@ def detect_category(text: str, has_media: bool = False) -> str:
     # ۱. اول حکایت/داستان/شعر
     for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_HEKAYAT]:
         if keyword in text:
-            return config.CATEGORY_HEKAYAT
+            return def _estimate_telegram_lines(text: str) -> int:
+    """
+    تعداد خطی که این متن توی تلگرام واقعاً اشغال می‌کنه رو تخمین می‌زنه -
+    هم خط‌های واقعی (\\n) رو حساب می‌کنه، هم اینکه هر پاراگراف طولانی خودش
+    به چند خط شکسته می‌شه (بر اساس عرض معمول صفحه‌ی موبایل).
+    """
+    text = text or ""
+    paragraphs = text.split("\n")
+    total_lines = 0
+    for para in paragraphs:
+        if not para.strip():
+            total_lines += 1
+            continue
+        wrapped = -(-len(para) // CHARS_PER_TELEGRAM_LINE)
+        total_lines += max(1, wrapped)
+    return total_lines
+
+
+def _is_short_photo_caption(text: str) -> bool:
+    """
+    آیا این متن شبیه یک کپشن کوتاه (۱ تا ۳ خطِ واقعیِ تلگرام) برای یک عکس
+    تاریخیه؟ این‌جور پست‌ها معمولاً یک توضیح کوتاهن، با اشاره به سال
+    (شمسی/قمری/میلادی) و/یا مکان (شهر، کشور، موزه...).
+    """
+    return _estimate_telegram_lines(text) <= 3
+
+
+def _mentions_year_or_place(text: str) -> bool:
+    text = text or ""
+    if YEAR_PATTERN.search(text):
+        return True
+    return any(keyword in text for keyword in PLACE_KEYWORDS)config.CATEGORY_HEKAYAT
 
     # ۲. بعد سخن بزرگان
     for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_SOKHAN_BOZORGAN]:
