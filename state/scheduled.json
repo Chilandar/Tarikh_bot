@@ -170,16 +170,6 @@
     "type": "post"
   },
   {
-    "slot_key": "2026-09-16T10:00:00+03:30",
-    "message_id": 2185,
-    "type": "post"
-  },
-  {
-    "slot_key": "2026-09-16T13:00:00+03:30",
-    "message_id": 2186,
-    "type": "post"
-  },
-  {
     "slot_key": "2026-09-17T10:00:00+03:30",
     "message_id": 2187,
     "type": "post"
@@ -202,6 +192,41 @@
   {
     "slot_key": "2026-09-18T13:00:00+03:30",
     "message_id": 2191,
+    "type": "post"
+  },
+  {
+    "slot_key": "16-2026-09-10",
+    "message_id": 2192,
+    "type": "post"
+  },
+  {
+    "slot_key": "16-2026-09-12",
+    "message_id": 2193,
+    "type": "post"
+  },
+  {
+    "slot_key": "16-2026-09-14",
+    "message_id": 2194,
+    "type": "post"
+  },
+  {
+    "slot_key": "2026-09-16T10:00:00+03:30",
+    "message_id": 2195,
+    "type": "post"
+  },
+  {
+    "slot_key": "2026-09-16T13:00:00+03:30",
+    "message_id": 2196,
+    "type": "post"
+  },
+  {
+    "slot_key": "16-2026-09-16",
+    "message_id": 2197,
+    "type": "post"
+  },
+  {
+    "slot_key": "16-2026-09-18",
+    "message_id": 2198,
     "type": "post"
   }
 ]

@@ -492,7 +492,7 @@
     "has_photo": true,
     "category": "general",
     "score": 25.251,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -772,5 +772,95 @@
     "category": "general",
     "score": 34.842,
     "used": true
+  },
+  {
+    "channel": "World5History",
+    "message_id": 171,
+    "text": "اسحاق نیوتون در سن 84سالگی و بدون هیچ  رابطه جنسی از دنیا رفت!!! @tssjahan",
+    "media_type": "photo",
+    "category": "aks_iran_qadim",
+    "score": 53.229,
+    "used": false
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 54,
+    "text": "اولین تصویر کشف شده از کماندار در تمدن ایلام \nکوزه مربوط به هزاره چهارم قبل از میلاد در شوش-خوزستان\nکه تصویر سرباز کماندار بر روی آن حک شده است\n\n@ElamiteHistorian",
+    "media_type": "photo",
+    "category": "general",
+    "score": 14.657,
+    "used": false
+  },
+  {
+    "channel": "AsrTarikh",
+    "message_id": 39105,
+    "text": "#سخنرانی جنجالی #سید_حسن_آقامیری\n\n#گند_زدیم به #زندگی_مردم ...\n\n@AsrTarikh",
+    "media_type": "video",
+    "category": "sokhan_bozorgan",
+    "score": 1007.515,
+    "used": true
+  },
+  {
+    "channel": "ancientir",
+    "message_id": 16,
+    "text": "حدود ۴۰ سال پيش در روزهایی که آغاز درگیری‌های ایران و آمریکا بود، ایران با این تفکر که ما نفت داریم و دنیا به نفت نیاز دارد، آمریکا و کشورهای متحد آمریکا را تهدید به تحریم نفتی می‌کرد!\n\n@ancientir",
+    "media_type": "photo",
+    "category": "general",
+    "score": 107.055,
+    "used": true
+  },
+  {
+    "channel": "World5History",
+    "message_id": 175,
+    "text": "👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆\nاین تصویر امیرکبیر نیست!!!\nیک مامور عالی رتبه ایرانی در اصفهان - حدود سال 1270 خورشیدی\nعکس از: ارنست هولتسر (Ernst Hoeltzer)\nتوضیح: در بعضی از سایت ها و صفحات از این عکس که عکاس آن هولتسراست به عنوان تصویر امیرکبیر یاد می شود.گفتنی است که امیر کبیر در20 دی 1230(خورشیدی) در باغ فین کاشان به قتل رسید در حالی که هولتسر متولد 1214خورشیدی است و در سال 1242 خورشیدی برای اولین بار به ایران آمد.\n\nTssjahan@",
+    "media_type": null,
+    "category": "sokhan_bozorgan",
+    "score": 22.896,
+    "used": true
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 56,
+    "text": "تندیس متعلق به 1800 قبل از میلاد در دوره سوکل مخ ها ، مشهور به ایزد دست طلایی\nحدس بر این می باشد که تندیس متعلق به اینشوشیناک باشد\n\n@ElamiteHistorian",
+    "media_type": "photo",
+    "category": "aks_iran_qadim",
+    "score": 18.611,
+    "used": false
+  },
+  {
+    "channel": "AsrTarikh",
+    "message_id": 39106,
+    "text": "محمود احمدی نژاد وقتی که بخشدار ماکو بود. ۱۳۶۰ خورشیدی\n\n@AsrTarikh",
+    "media_type": "photo",
+    "category": "aks_iran_qadim",
+    "score": 515.026,
+    "used": true
+  },
+  {
+    "channel": "ancientir",
+    "message_id": 17,
+    "text": "حكم اختلاس ۳متر سيم مسی در دهه ۴۰\nسه ماه حبس و انفصال ابدی از خدمات دولتی!\n\n@ancientir",
+    "media_type": "photo",
+    "category": "aks_iran_qadim",
+    "score": 185.067,
+    "used": true
+  },
+  {
+    "channel": "World5History",
+    "message_id": 176,
+    "text": " تصویری از امیرعباس هویدا در محل کار خود. جالب است بدانید اولین کامپیوتر را امیر عباس هویدا در سال 1354 وارد ایران کرد.          @Tssjahan",
+    "media_type": "photo",
+    "category": "aks_iran_qadim",
+    "score": 102.063,
+    "used": true
+  },
+  {
+    "channel": "IranAncient",
+    "message_id": 57,
+    "text": "ظرف سفالین کشف شده در شوش - خوزستان\nاوایل هزاره سوم قبل از میلاد \nزمان تقریبی بین 3000 تا 2800 قبل از میلاد\n\n@ElamiteHistorian",
+    "media_type": "photo",
+    "category": "aks_iran_qadim",
+    "score": 6.606,
+    "used": false
   }
 ]
