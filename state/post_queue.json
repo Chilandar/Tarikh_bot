@@ -474,7 +474,7 @@
     "has_photo": true,
     "category": "general",
     "score": 14.942,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -501,7 +501,7 @@
     "has_photo": true,
     "category": "general",
     "score": 15.05,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -546,7 +546,7 @@
     "has_photo": true,
     "category": "general",
     "score": 15.009,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -600,7 +600,7 @@
     "has_photo": true,
     "category": "general",
     "score": 13.207,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -789,7 +789,7 @@
     "media_type": "photo",
     "category": "general",
     "score": 14.657,
-    "used": false
+    "used": true
   },
   {
     "channel": "AsrTarikh",
@@ -870,7 +870,7 @@
     "media_type": null,
     "category": "general",
     "score": 28.691,
-    "used": false
+    "used": true
   },
   {
     "channel": "IranAncient",
@@ -888,7 +888,7 @@
     "media_type": "video",
     "category": "aks_iran_qadim",
     "score": 1235.035,
-    "used": false
+    "used": true
   },
   {
     "channel": "ancientir",
@@ -897,7 +897,7 @@
     "media_type": "photo",
     "category": "general",
     "score": 615.174,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
@@ -915,7 +915,7 @@
     "media_type": null,
     "category": "general",
     "score": 20.619,
-    "used": false
+    "used": true
   },
   {
     "channel": "AsrTarikh",
@@ -924,7 +924,7 @@
     "media_type": "photo",
     "category": "aks_iran_qadim",
     "score": 470.824,
-    "used": false
+    "used": true
   },
   {
     "channel": "ancientir",
@@ -933,7 +933,7 @@
     "media_type": "photo",
     "category": "sokhan_bozorgan",
     "score": 91.064,
-    "used": false
+    "used": true
   },
   {
     "channel": "World5History",
