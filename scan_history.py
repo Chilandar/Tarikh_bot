@@ -1,76 +1,22 @@
 # -*- coding: utf-8 -*-
 """
 اسکریپت اصلی گشتن تاریخچه‌ی کانال‌ها.
-فقط وقتی کاربر دستور /scan رو به بات فرستاده باشه کاری انجام می‌ده - وگرنه
-بلافاصله بدون هیچ تغییری تموم می‌شه. به کاربر هم گزارش می‌ده (شروع + نتیجه).
+دیگه خودش مستقیم با تلگرام Bot API تماس نمی‌گیره (این کار توسط check_telegram.py
+انجام می‌شه) - فقط فایل پرچم state/scan_requested.json رو چک می‌کنه. اگه خاموش
+بود، بلافاصله بدون هیچ تغییری تموم می‌شه.
 
 بودجه‌ی HISTORY_MESSAGES_PER_RUN به‌طور یک‌درمیون (round-robin) بین همه‌ی
-کانال‌های فعال تقسیم می‌شه - یعنی به‌جای خالی‌کردن کل بودجه روی اولین کانال،
-از هر کانال یکی برمی‌داره، دوباره از هر کانال یکی، و همین‌طور تا تموم‌شدن بودجه.
+کانال‌های فعال تقسیم می‌شه.
 
 اجرا: python scan_history.py
 """
 
 import datetime
-import requests
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import detect_category
 
 import pytz
-
-API_BASE = f"https://api.telegram.org/bot{config.BOT_TOKEN}"
-
-SCAN_KEYBOARD = {
-    "keyboard": [[{"text": config.SCAN_COMMAND_TEXT}]],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
-
-
-def ensure_bot_menu():
-    try:
-        requests.post(
-            f"{API_BASE}/setMyCommands",
-            json={"commands": [{"command": "scan", "description": "شروع گشتن تاریخچه‌ی کانال‌ها"}]},
-            timeout=10,
-        )
-    except requests.RequestException:
-        pass
-
-
-def scan_command_pending() -> bool:
-    if not config.BOT_TOKEN or not config.OWNER_USER_ID:
-        return False
-
-    ensure_bot_menu()
-
-    last = load_json(config.LAST_COMMAND_UPDATE_ID_FILE, {"update_id": 0})
-    resp = requests.get(f"{API_BASE}/getUpdates", params={"offset": last["update_id"] + 1, "timeout": 10})
-    resp.raise_for_status()
-    updates = resp.json().get("result", [])
-
-    found = False
-    max_update_id = last["update_id"]
-
-    for update in updates:
-        max_update_id = max(max_update_id, update["update_id"])
-        msg = update.get("message", {})
-        if msg.get("from", {}).get("id") != config.OWNER_USER_ID:
-            continue
-        text = (msg.get("text") or "").strip().lower()
-
-        if text == "/start":
-            send_bot_message(
-                "سلام! برای شروع گشتن تاریخچه‌ی کانال‌ها، دکمه‌ی زیر رو بزن یا /scan رو بفرست.",
-                reply_markup=SCAN_KEYBOARD,
-            )
-        elif text == config.SCAN_COMMAND_TEXT:
-            found = True
-
-    last["update_id"] = max_update_id
-    save_json(config.LAST_COMMAND_UPDATE_ID_FILE, last)
-    return found
 
 
 def get_cutoff_date():
@@ -93,10 +39,7 @@ def score_message(text: str, views: int, forwards: int, avg_views: float) -> flo
 
 
 class ChannelScanner:
-    """
-    یک لایه‌ی نازک روی iter_messages که پیام‌های واجدشرایط یک کانال رو یکی‌یکی
-    (به‌درخواست، نه همه‌ی ۳۰۰ تا یک‌جا) برمی‌گردونه - برای پشتیبانی از حالت round-robin.
-    """
+    """پیام‌های واجدشرایط یک کانال رو یکی‌یکی برمی‌گردونه - برای حالت round-robin."""
 
     def __init__(self, client, channel, state, cutoff, stats):
         self.channel = channel
@@ -160,11 +103,12 @@ class ChannelScanner:
 
 
 def main():
-    if not scan_command_pending():
-        print(f"دستور {config.SCAN_COMMAND_TEXT} پیدا نشد - این اجرا کاری انجام نمی‌ده.")
+    scan_flag = load_json(config.SCAN_FLAG_FILE, {"pending": False})
+    if not scan_flag.get("pending"):
+        print("دستور /scan در انتظار نیست - این اجرا کاری انجام نمی‌ده.")
         return
 
-    print(f"دستور {config.SCAN_COMMAND_TEXT} پیدا شد - شروع گشتن تاریخچه...")
+    print("دستور /scan فعاله - شروع گشتن تاریخچه...")
     send_bot_message("🔍 شروع گشتن تاریخچه‌ی کانال‌ها... (چند دقیقه طول می‌کشه)")
 
     cutoff = get_cutoff_date()
@@ -208,6 +152,9 @@ def main():
             if channel not in per_channel_report:
                 if progress.get(channel, {}).get("finished"):
                     per_channel_report[channel] = "تاریخچه تمام شده"
+
+    scan_flag["pending"] = False
+    save_json(config.SCAN_FLAG_FILE, scan_flag)
 
     save_json(config.HISTORY_PROGRESS_FILE, progress)
     save_json(config.POST_QUEUE_FILE, queue)
