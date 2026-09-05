@@ -34,6 +34,8 @@ SOURCE_CHANNELS = [
     "IranAncient",
     "AsrTarikh",
     "ancientir",
+    "https://t.me/joinchat/AAAAAFYc_MTDf65o-hmnUA",
+    "Anjomane_bozorgan",
 ]
 
 # فقط پست‌های قدیمی‌تر از این تعداد روز بررسی می‌شن (یک سال = ۳۶۵ روز)
