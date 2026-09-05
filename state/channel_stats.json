@@ -1,18 +1,26 @@
 {
   "IranAncient": {
-    "count": 44,
-    "avg_views": 7202.681818181818
+    "count": 46,
+    "avg_views": 7063.347826086956
   },
   "AsrTarikh": {
-    "count": 29,
-    "avg_views": 51925.44827586207
+    "count": 31,
+    "avg_views": 50902.48387096774
   },
   "ancientir": {
-    "count": 17,
-    "avg_views": 23354.941176470584
+    "count": 19,
+    "avg_views": 24871.368421052626
   },
   "World5History": {
-    "count": 56,
-    "avg_views": 6326.9642857142835
+    "count": 58,
+    "avg_views": 6303.913793103447
+  },
+  "https://t.me/joinchat/AAAAAFYc_MTDf65o-hmnUA": {
+    "count": 1,
+    "avg_views": 6759.0
+  },
+  "Anjomane_bozorgan": {
+    "count": 1,
+    "avg_views": 4674.0
   }
 }

@@ -1,18 +1,26 @@
 {
   "World5History": {
-    "last_id": 211,
+    "last_id": 214,
     "finished": false
   },
   "IranAncient": {
-    "last_id": 84,
+    "last_id": 88,
     "finished": false
   },
   "AsrTarikh": {
-    "last_id": 39121,
+    "last_id": 39123,
     "finished": false
   },
   "ancientir": {
-    "last_id": 36,
+    "last_id": 40,
+    "finished": false
+  },
+  "https://t.me/joinchat/AAAAAFYc_MTDf65o-hmnUA": {
+    "last_id": 3,
+    "finished": false
+  },
+  "Anjomane_bozorgan": {
+    "last_id": 17,
     "finished": false
   }
 }
