@@ -2,12 +2,14 @@
 """
 تنها جایی که با تلگرام Bot API تماس می‌گیره تا پیام‌های جدید رو بخونه.
 
-نکته‌ی مهم: تلگرام برای هر بات فقط یک صف پیام مشترک داره - نمی‌شه دو اسکریپت
-جدا (با دو ردیاب offset جدا) هردو مستقل getUpdates صدا بزنن، چون هرکدوم که
-زودتر/بیشتر صدا بزنه، پیام‌ها رو از صف تلگرام "تأیید‌شده" حساب می‌کنه و اون‌یکی
-اسکریپت دیگه اصلاً نمی‌بینتشون. برای همین این تنها جاییه که getUpdates صدا زده
-می‌شه، و کارهای دیگه (چک /scan، چک /start، پردازش کتاب) همه از همینجا انجام
-می‌شن، با یک ردیاب مشترک (SHARED_UPDATE_ID_FILE).
+نکته‌ی مهم درباره‌ی فایل‌های بزرگ: بات‌های تلگرام فقط می‌تونن فایل‌های تا ۲۰
+مگابایت رو با getFile دانلود کنن (این محدودیت خودِ تلگرامه، نه ما). برای
+فایل‌های بزرگ‌تر (کتاب‌های حجیم)، از همون اکانت کاربری (Telethon) که برای
+زمان‌بندی استفاده می‌شه کمک می‌گیریم، چون اکانت کاربری این محدودیت رو نداره.
+
+مهم‌تر از همه: هر خطایی هم پیش بیاد (فایل بزرگ، شبکه، هرچی)، این اسکریپت
+کرش نمی‌کنه - چون اگه کرش کنه، مرحله‌های بعدیِ workflow (گشتن تاریخچه،
+زمان‌بندی) هم اصلاً اجرا نمی‌شن.
 
 اجرا: python check_telegram.py
 """
@@ -16,7 +18,7 @@ import os
 import requests
 
 import config
-from telegram_client import load_json, save_json, send_bot_message
+from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import process_book_caption, build_book_filename
 
 API_BASE = f"https://api.telegram.org/bot{config.BOT_TOKEN}"
@@ -40,17 +42,63 @@ def ensure_bot_menu():
         pass
 
 
-def download_telegram_file(file_id: str, dest_path: str):
-    resp = requests.get(f"{API_BASE}/getFile", params={"file_id": file_id})
-    resp.raise_for_status()
-    file_path = resp.json()["result"]["file_path"]
+def try_bot_api_download(file_id: str, dest_path: str) -> bool:
+    """دانلود از طریق Bot API. اگه فایل بزرگ‌تر از ۲۰ مگابایت باشه، شکست می‌خوره."""
+    try:
+        resp = requests.get(f"{API_BASE}/getFile", params={"file_id": file_id}, timeout=30)
+        resp.raise_for_status()
+        file_path = resp.json()["result"]["file_path"]
 
-    file_resp = requests.get(f"{FILE_BASE}/{file_path}")
-    file_resp.raise_for_status()
+        file_resp = requests.get(f"{FILE_BASE}/{file_path}", timeout=120)
+        file_resp.raise_for_status()
 
-    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-    with open(dest_path, "wb") as f:
-        f.write(file_resp.content)
+        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+        with open(dest_path, "wb") as f:
+            f.write(file_resp.content)
+        return True
+    except requests.RequestException as e:
+        print(f"⚠️ دانلود با Bot API شکست خورد ({e}) - فایل احتمالاً بزرگ‌تر از ۲۰ مگابایته.")
+        return False
+
+
+def try_telethon_download(document: dict, dest_path: str) -> bool:
+    """
+    فال‌بک برای فایل‌های بزرگ: از اکانت کاربری (که خودش پیام رو فرستاده به
+    بات) توی همون گفتگوی خصوصی با بات دنبال فایل مشابه (بر اساس اسم و حجم)
+    می‌گرده و دانلودش می‌کنه.
+    """
+    try:
+        bot_user_id = int(config.BOT_TOKEN.split(":")[0])
+    except (ValueError, IndexError):
+        print("⚠️ نتونستیم آیدی بات رو از توکن استخراج کنیم.")
+        return False
+
+    target_name = document.get("file_name")
+    target_size = document.get("file_size")
+
+    try:
+        with get_client() as client:
+            for msg in client.iter_messages(bot_user_id, limit=50):
+                if not msg.document:
+                    continue
+                msg_name = None
+                for attr in msg.document.attributes:
+                    if hasattr(attr, "file_name"):
+                        msg_name = attr.file_name
+                        break
+                if target_name and msg_name != target_name:
+                    continue
+                if target_size and msg.document.size != target_size:
+                    continue
+                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                client.download_media(msg, file=dest_path)
+                return True
+    except Exception as e:
+        print(f"⚠️ دانلود جایگزین با اکانت کاربری هم شکست خورد: {e}")
+        return False
+
+    print("⚠️ فایل مشابه توی گفتگوی خصوصی با بات پیدا نشد.")
+    return False
 
 
 def main():
@@ -61,15 +109,21 @@ def main():
     ensure_bot_menu()
 
     last = load_json(config.SHARED_UPDATE_ID_FILE, {"update_id": 0})
-    resp = requests.get(f"{API_BASE}/getUpdates", params={"offset": last["update_id"] + 1, "timeout": 10})
-    resp.raise_for_status()
-    updates = resp.json().get("result", [])
+
+    try:
+        resp = requests.get(f"{API_BASE}/getUpdates", params={"offset": last["update_id"] + 1, "timeout": 10})
+        resp.raise_for_status()
+        updates = resp.json().get("result", [])
+    except requests.RequestException as e:
+        print(f"⚠️ getUpdates شکست خورد: {e} - این اجرا رد می‌شه.")
+        return
 
     scan_flag = load_json(config.SCAN_FLAG_FILE, {"pending": False})
     book_queue = load_json(config.BOOK_QUEUE_FILE, [])
 
     max_update_id = last["update_id"]
     books_added = 0
+    books_failed = 0
 
     for update in updates:
         max_update_id = max(max_update_id, update["update_id"])
@@ -94,7 +148,12 @@ def main():
             continue
 
         document = msg.get("document")
-        if document:
+        if not document:
+            continue
+
+        # این خط مهمه: هر خطایی هم توی پردازش این یک فایل پیش بیاد، فقط همین
+        # فایل رد می‌شه - کل اجرا کرش نمی‌کنه و بقیه‌ی پیام‌ها هم پردازش می‌شن.
+        try:
             caption = msg.get("caption", "")
             original_filename = document.get("file_name", "book.pdf")
             ext = original_filename.split(".")[-1] if "." in original_filename else "pdf"
@@ -103,7 +162,14 @@ def main():
             new_filename = build_book_filename(parsed["book_title"], parsed["volume_number"], ext)
             dest_path = os.path.join(config.BOOKS_DIR, new_filename)
 
-            download_telegram_file(document["file_id"], dest_path)
+            downloaded = try_bot_api_download(document["file_id"], dest_path)
+            if not downloaded:
+                downloaded = try_telethon_download(document, dest_path)
+
+            if not downloaded:
+                books_failed += 1
+                send_bot_message(f"❌ دانلود «{new_filename}» شکست خورد (فایل خیلی بزرگه یا مشکل دیگه‌ای پیش اومد).")
+                continue
 
             book_queue.append({
                 "file_path": dest_path,
@@ -112,13 +178,18 @@ def main():
                 "used": False,
             })
             books_added += 1
+        except Exception as e:
+            books_failed += 1
+            print(f"⚠️ پردازش یک فایل کتاب با خطا مواجه شد: {e}")
+            send_bot_message(f"❌ پردازش یک کتاب با خطا مواجه شد: {e}")
+            continue
 
     last["update_id"] = max_update_id
     save_json(config.SHARED_UPDATE_ID_FILE, last)
     save_json(config.SCAN_FLAG_FILE, scan_flag)
     save_json(config.BOOK_QUEUE_FILE, book_queue)
 
-    print(f"{len(updates)} پیام بررسی شد. {books_added} کتاب جدید اضافه شد. دستور /scan در انتظار: {scan_flag['pending']}")
+    print(f"{len(updates)} پیام بررسی شد. {books_added} کتاب اضافه شد، {books_failed} کتاب شکست خورد. /scan در انتظار: {scan_flag['pending']}")
     if books_added:
         send_bot_message(f"📚 {books_added} کتاب جدید پردازش و به صف اضافه شد.")
 
