@@ -9,11 +9,15 @@ import html
 import hashlib
 import config
 
+# میانگین تعداد کاراکتر در هر "خط" نمایش‌داده‌شده توی تلگرام (تخمینی، برای
+# متن فارسی روی موبایل) - برای تخمین تعداد خط واقعی، نه فقط شمردن \n
 CHARS_PER_TELEGRAM_LINE = 40
 
+# الگوی سال (شمسی/قمری/میلادی) - چهار رقم پشت‌سرهم، یا کلمه‌ی "سال" قبلش
 YEAR_PATTERN = re.compile(r"(سال\s+)?\b1[0-9]{3}\b")
 
-PLACE_KEYWORDS = ["موزه", "شهر", "کشور", "خیابان", "میدان", "استان", "کوچه", "روستا"]
+# کلماتی که معمولاً همراه با اشاره به مکان (شهر/کشور/موزه) میان
+PLACE_KEYWORDS = ["موزه", "شهر", "کشور", "خیابان", "میدان", "استان", "روستا"]
 
 
 def normalize_text_for_dedupe(text: str) -> str:
@@ -36,9 +40,56 @@ def text_hash_for_dedupe(text: str) -> str:
 USERNAME_RE = re.compile(r"@\w+")
 TME_LINK_RE = re.compile(r"(https?://)?t\.me/\S+")
 
+# نشانه‌های رایج خط‌های امضا/تبلیغ (کانال، اینستاگرام، هشتگ اسم کانال و...)
+SIGNATURE_MARKER_SYMBOLS = (
+    "▪️", "▫️", "🔻", "🔺", "🆔", "🔹", "🔸", "➖", "➡️", "👉", "●", "○", "■", "□", "•",
+)
+
+
+def _looks_like_signature_line(line: str) -> bool:
+    """
+    آیا این خط شبیه یک خط امضا/تبلیغ (آیدی کانال، اینستاگرام، هشتگ اسم
+    کانال، یا برچسب‌هایی مثل «کانال تلگرام ...») هست؟
+    """
+    s = line.strip()
+    if not s:
+        return True  # خط خالی - در فرآیند حذفِ انتهای پیام، ردش می‌کنیم
+    lower = s.lower()
+    if "@" in s:
+        return True
+    if "instagram" in lower or "t.me/" in lower:
+        return True
+    if s.startswith("#"):
+        return True
+    for sym in SIGNATURE_MARKER_SYMBOLS:
+        if s.startswith(sym) and len(s) <= 60:
+            return True
+    return False
+
+
+def strip_trailing_signature_block(text: str) -> str:
+    """
+    از انتهای متن، خط‌به‌خط جلو میره و هر خطی که شبیه امضا/تبلیغ (آیدی کانال،
+    اینستاگرام، هشتگ، خط‌های برچسب‌مانند) یا خالی باشه رو حذف می‌کنه، تا به
+    اولین خط واقعیِ محتوا برسه.
+    """
+    lines = text.split("\n")
+    while lines and not lines[-1].strip():
+        lines.pop()
+    while lines and _looks_like_signature_line(lines[-1]):
+        lines.pop()
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return "\n".join(lines)
+
 
 def clean_channel_post_text(original_text: str) -> str:
+    """
+    آیدی/یوزرنیم و لینک‌های t.me رو از متن پست حذف می‌کنه، متن اصلی رو بولد
+    می‌کنه، و امضای خودمون رو (بدون بولد) با یک خط فاصله‌ی کامل در انتها اضافه می‌کنه.
+    """
     text = original_text or ""
+    text = strip_trailing_signature_block(text)
     text = USERNAME_RE.sub("", text)
     text = TME_LINK_RE.sub("", text)
     text = text.rstrip()
@@ -51,6 +102,11 @@ def clean_channel_post_text(original_text: str) -> str:
 # ---------------------------------------------------------------------------
 
 def _estimate_telegram_lines(text: str) -> int:
+    """
+    تعداد خطی که این متن توی تلگرام واقعاً اشغال می‌کنه رو تخمین می‌زنه -
+    هم خط‌های واقعی (\\n) رو حساب می‌کنه، هم اینکه هر پاراگراف طولانی خودش
+    به چند خط شکسته می‌شه (بر اساس عرض معمول صفحه‌ی موبایل).
+    """
     text = text or ""
     paragraphs = text.split("\n")
     total_lines = 0
@@ -58,12 +114,17 @@ def _estimate_telegram_lines(text: str) -> int:
         if not para.strip():
             total_lines += 1
             continue
-        wrapped = -(-len(para) // CHARS_PER_TELEGRAM_LINE)
+        wrapped = -(-len(para) // CHARS_PER_TELEGRAM_LINE)  # سقف تقسیم
         total_lines += max(1, wrapped)
     return total_lines
 
 
 def _is_short_photo_caption(text: str) -> bool:
+    """
+    آیا این متن شبیه یک کپشن کوتاه (۱ تا ۳ خطِ واقعیِ تلگرام، نه فقط \\n)
+    برای یک عکس تاریخیه؟ این‌جور پست‌ها معمولاً یک توضیح کوتاهن، با اشاره
+    به سال (شمسی/قمری/میلادی) و/یا مکان (شهر، کشور، موزه...).
+    """
     return _estimate_telegram_lines(text) <= 3
 
 
@@ -77,14 +138,19 @@ def _mentions_year_or_place(text: str) -> bool:
 def detect_category(text: str, has_media: bool = False) -> str:
     text = text or ""
 
+    # ۱. اول حکایت/داستان/شعر - چون نویسنده‌ها و شاعرهای خاص خودشو داره
     for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_HEKAYAT]:
         if keyword in text:
             return config.CATEGORY_HEKAYAT
 
+    # ۲. بعد سخن بزرگان - اسم فیلسوف/نویسنده/سیاستمدار معروف
     for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_SOKHAN_BOZORGAN]:
         if keyword in text:
             return config.CATEGORY_SOKHAN_BOZORGAN
 
+    # ۳. تصاویر ایران قدیم: تنها ملاک، عکس/فیلم داشتن + توضیح کوتاه (۱ تا ۳ خط)
+    # طبق چیزی که خودت توضیح دادی - دیگه کلیدواژه‌ی جداگانه‌ای براش نداریم،
+    # چون کلیدواژه‌ها قابل‌اعتماد نبودن و این قانون خودش کافیه.
     if has_media and _is_short_photo_caption(text):
         return config.CATEGORY_AKS_IRAN_QADIM
 
@@ -127,6 +193,15 @@ def _persian_ordinal_to_digit(word: str) -> str:
     if word.isdigit():
         return word
     return PERSIAN_ORDINAL_TO_DIGIT.get(word, word)
+
+
+def _strip_ketab_prefix(title: str) -> str:
+    """برای اسم فایل: اگه اسم کتاب با کلمه‌ی «کتاب» شروع شده، فقط همون‌جا حذفش می‌کنه (کپشن دست‌نخورده می‌مونه)."""
+    t = title.strip()
+    if t.startswith("کتاب "):
+        rest = t[len("کتاب "):].strip()
+        return rest if rest else t
+    return t
 
 
 def process_book_caption(raw_caption: str):
@@ -187,6 +262,7 @@ def process_book_caption(raw_caption: str):
     return {
         "clean_caption": clean_caption,
         "book_title": book_title or "کتاب بدون‌نام",
+        "filename_title": _strip_ketab_prefix(book_title or "کتاب بدون‌نام"),
         "volume_number": volume_number,
     }
 
