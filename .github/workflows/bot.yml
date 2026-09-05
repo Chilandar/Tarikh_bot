@@ -24,6 +24,9 @@ jobs:
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_OWNER_USER_ID: ${{ secrets.TG_OWNER_USER_ID }}
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          TG_SESSION_STRING: ${{ secrets.TG_SESSION_STRING }}
         run: python check_telegram.py
 
       - name: Scan channel history (only if /scan was requested)
