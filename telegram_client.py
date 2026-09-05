@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 اتصال به تلگرام (با اکانت کاربری، از طریق Telethon) و توابع کمکی خواندن/نوشتن state.
+از اکانت کاربری استفاده می‌کنیم (نه بات معمولی) چون قابلیت‌هایی مثل خواندن
+تاریخچه‌ی کانال‌های دیگر و زمان‌بندی پست (schedule) فقط با اکانت کاربری ممکنه.
 """
 
 import json
@@ -12,6 +14,48 @@ from telethon.sessions import StringSession
 import config
 
 
+def send_bot_message(text: str, reply_markup: dict = None) -> None:
+    """یک پیام از طرف بات برای خود کاربر (OWNER_USER_ID) می‌فرسته - برای گزارش/تأیید."""
+    if not config.BOT_TOKEN or not config.OWNER_USER_ID:
+        return
+    payload = {"chat_id": config.OWNER_USER_ID, "text": text}
+    if reply_markup:
+        payload["reply_markup"] = json.dumps(reply_markup)
+    try:
+        requests.post(f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage", data=payload, timeout=10)
+    except requests.RequestException:
+        pass  # اگه گزارش نرسید، مهم نیست کل اجرا خراب بشه
+
+
+def resolve_source_entity(client, channel_ref: str):
+    """
+    یک کانال منبع رو resolve می‌کنه - چه یوزرنیم معمولی (مثل "World5History")
+    باشه، چه لینک دعوت خصوصی (مثل ".../joinchat/HASH" یا ".../+HASH").
+    برای لینک دعوت، اگه قبلاً عضو نشده باشیم، اول عضو می‌شه.
+    """
+    if "joinchat/" in channel_ref or "/+" in channel_ref:
+        from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
+        from telethon.tl.types import ChatInviteAlready
+
+        if "joinchat/" in channel_ref:
+            invite_hash = channel_ref.split("joinchat/")[-1]
+        else:
+            invite_hash = channel_ref.split("/+")[-1]
+        invite_hash = invite_hash.strip("/")
+
+        try:
+            result = client(CheckChatInviteRequest(invite_hash))
+            if isinstance(result, ChatInviteAlready):
+                return result.chat
+        except Exception:
+            pass
+
+        updates = client(ImportChatInviteRequest(invite_hash))
+        return updates.chats[0]
+
+    return client.get_entity(channel_ref)
+
+
 def get_client() -> TelegramClient:
     if not (config.API_ID and config.API_HASH and config.SESSION_STRING):
         raise RuntimeError(
@@ -20,20 +64,6 @@ def get_client() -> TelegramClient:
         )
     return TelegramClient(StringSession(config.SESSION_STRING), config.API_ID, config.API_HASH)
 
-
-def send_bot_message(text: str, reply_markup: dict = None) -> None:
-    """یک پیام از طرف بات برای خود کاربر (OWNER_USER_ID) می‌فرسته - برای گزارش/تأیید."""
-    if not config.BOT_TOKEN or not config.OWNER_USER_ID:
-        print("DEBUG: send_bot_message رد شد چون BOT_TOKEN یا OWNER_USER_ID خالیه")
-        return
-    payload = {"chat_id": config.OWNER_USER_ID, "text": text}
-    if reply_markup:
-        payload["reply_markup"] = json.dumps(reply_markup)
-    try:
-        resp = requests.post(f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage", data=payload, timeout=10)
-        print("DEBUG: sendMessage status:", resp.status_code, "body:", resp.text[:300])
-    except requests.RequestException as e:
-        print("DEBUG: sendMessage exception:", e)
 
 # ---------------------------------------------------------------------------
 # خواندن/نوشتن فایل‌های وضعیت (JSON)
