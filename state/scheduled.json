@@ -75,11 +75,6 @@
     "type": "post"
   },
   {
-    "slot_key": "2026-09-05T13:00:00+03:30",
-    "message_id": 2226,
-    "type": "post"
-  },
-  {
     "slot_key": "19-hekayat-2026-09-05",
     "message_id": 2227,
     "type": "post"
@@ -193,5 +188,15 @@
     "slot_key": "2026-09-13T13:00:00+03:30",
     "message_id": 2260,
     "type": "post"
+  },
+  {
+    "slot_key": "19-book-2026-09-08-1",
+    "message_id": 2262,
+    "type": "book"
+  },
+  {
+    "slot_key": "19-book-2026-09-09-0",
+    "message_id": 2263,
+    "type": "book"
   }
 ]
