@@ -170,21 +170,6 @@
     "type": "post"
   },
   {
-    "slot_key": "2026-09-10T13:00:00+03:30",
-    "message_id": 2257,
-    "type": "post"
-  },
-  {
-    "slot_key": "2026-09-11T10:00:00+03:30",
-    "message_id": 2258,
-    "type": "post"
-  },
-  {
-    "slot_key": "2026-09-11T13:00:00+03:30",
-    "message_id": 2259,
-    "type": "post"
-  },
-  {
     "slot_key": "2026-09-13T13:00:00+03:30",
     "message_id": 2260,
     "type": "post"
