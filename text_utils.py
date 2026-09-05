@@ -135,24 +135,34 @@ def _mentions_year_or_place(text: str) -> bool:
     return any(keyword in text for keyword in PLACE_KEYWORDS)
 
 
+def _looks_like_narrative_dialogue(text: str) -> bool:
+    """
+    آیا این متن شبیه یک حکایت/جوک روایی با دیالوگه؟ (بدون اسم خاص یا کلمه‌ی
+    صریح «حکایت»). این‌جور متن‌ها معمولاً طولانی‌ان و چند تا دونقطه/گیومه دارن.
+    """
+    text = text or ""
+    if len(text) < 200:
+        return False
+    dialogue_markers = text.count(":") + text.count("«") + text.count("»") + text.count('"')
+    return dialogue_markers >= 2
+
+
 def detect_category(text: str, has_media: bool = False) -> str:
     text = text or ""
 
-    # ۱. اول حکایت/داستان/شعر - چون نویسنده‌ها و شاعرهای خاص خودشو داره
     for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_HEKAYAT]:
         if keyword in text:
             return config.CATEGORY_HEKAYAT
 
-    # ۲. بعد سخن بزرگان - اسم فیلسوف/نویسنده/سیاستمدار معروف
     for keyword in config.CATEGORY_KEYWORDS[config.CATEGORY_SOKHAN_BOZORGAN]:
         if keyword in text:
             return config.CATEGORY_SOKHAN_BOZORGAN
 
-    # ۳. تصاویر ایران قدیم: تنها ملاک، عکس/فیلم داشتن + توضیح کوتاه (۱ تا ۳ خط)
-    # طبق چیزی که خودت توضیح دادی - دیگه کلیدواژه‌ی جداگانه‌ای براش نداریم،
-    # چون کلیدواژه‌ها قابل‌اعتماد نبودن و این قانون خودش کافیه.
     if has_media and _is_short_photo_caption(text):
         return config.CATEGORY_AKS_IRAN_QADIM
+
+    if not has_media and _looks_like_narrative_dialogue(text):
+        return config.CATEGORY_HEKAYAT
 
     return config.CATEGORY_GENERAL
 
