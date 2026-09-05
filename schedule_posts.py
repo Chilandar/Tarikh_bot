@@ -197,8 +197,6 @@ def main():
                     continue
                 item = pop_best(post_queue, exclude_categories=config.RESERVED_CATEGORIES)
                 if not item:
-                    item = pop_best(post_queue)
-                if not item:
                     continue
                 msg_id = send_post(client, entity, item, slot_dt)
                 if msg_id is None:
