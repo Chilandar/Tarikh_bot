@@ -1,92 +1,99 @@
 [
   {
+    "category": "book_excerpt",
+    "source_type": "book_excerpt",
+    "caption": "<b>ساسانیان والرین امپراتور روم را به اسیری می‌برند.\n\n📚 کتاب ارتش ایران ساسانی\n👤 تالیف: دیوید نیکول\n✍️ ترجمه: محمد آغاجاری\n📄 صفحه 6\nتدوین تاریخگان</b>\n\n🏛️ @Tarikhgan",
+    "score": 49,
+    "used": true
+  },
+  {
     "channel": "World5History",
-    "message_id": 226,
-    "text": "تصویری از گذشت زمان حال و گذشته در خیابانی در المان یکی مربوط به حال دیگری در جنگ جهانی @tssjahan",
+    "message_id": 232,
+    "text": "ظل السلطان تخریبگر اثار تاریخی بیش از هفتاد بنای تاریخی در اصفهان را تخریب کرد @tssjahan",
     "media_type": "photo",
     "category": "aks_iran_qadim",
-    "score": 10.943,
-    "used": false
+    "score": 26.861,
+    "used": true
   },
   {
     "channel": "IranAncient",
-    "message_id": 96,
-    "text": "سیر تکاملی گلوله ها و مهرها و تبدیل شدن به لوحه های گلی\n@ElamiteHistorian",
+    "message_id": 97,
+    "text": "متاسفانه باخبر شدیم حبیب محبیان امروز دار فانی رو وداع گفتند. روحش شاد و یادش گرامی 😔😔😔\n@ElamiteHistorian",
     "media_type": "photo",
-    "category": "aks_iran_qadim",
-    "score": 8.502,
-    "used": false
+    "category": "general",
+    "score": 2.512,
+    "used": true
   },
   {
     "channel": "AsrTarikh",
-    "message_id": 39128,
-    "text": "۱٢ آذر ۱٣۱٢ جاده چالوس افتتاح شد و امروز این جاده ٨٧ ساله شد!\n\n+نام رسمی جاده چالوس، جاده ۵٩ است! خیلی‌ها این جاده ۱۶٣ کیلومتری را یکی از زیباترین‌ جاده‌های جهان می‌دانند.\n\n@bi3ansor",
+    "message_id": 39130,
+    "text": "به ما می گویند که از گناهان خود توبه کنیم، عجب سیستم قشنگی که به موجب آن، انسان با اظهار ندامت، حساب جنایتی را پاک می کند!!\n\n@bi3ansor",
     "media_type": "photo",
-    "category": "aks_iran_qadim",
-    "score": 234.614,
-    "used": false
+    "category": "general",
+    "score": 188.613,
+    "used": true
   },
   {
     "channel": "ancientir",
-    "message_id": 46,
-    "text": "ویدیو مستند از مهمانی شیخ زاید برای بزرگان قبایل امارات پیش از کشف نفت، که توسط آرشیو موزه لندن منتشر شده\n\n@ancientir",
-    "media_type": "video",
-    "category": "aks_iran_qadim",
-    "score": 485.455,
-    "used": false
+    "message_id": 49,
+    "text": "بزرگى را گفتند كه انسانيت چيست؟ گفت:\n\nتواضع در وقت رفعت!\nعفو هـنگام قدرت!\nسخاوت هنگام تنگدستی!\nو بخشـش بدون منت...!\n\n@ancientir",
+    "media_type": "photo",
+    "category": "general",
+    "score": 441.309,
+    "used": true
   },
   {
     "channel": "https://t.me/joinchat/AAAAAFYc_MTDf65o-hmnUA",
-    "message_id": 7,
-    "text": "#برگی_از_تاریخ\n\n📜 در تاریخ ایران تنها دو پادشاه زن به صورت رسمی بر ایران حکومت کردند. پوراندخت و خواهرش آذرميدخت که درسالهای ۶۲۹_۶۳۲ میلادی بر امپراتوری بزرگ ساسانی فرمانروایی کردند.\n\n@Mr_tarikh",
+    "message_id": 8,
+    "text": "#دیالوگ_برتر\n\nمی‌دونی بدترین قسمت خیانت چیه؟\n\n اینه که هیچ‌وقت از طرف دشمن نیست...\n\n🎬 Road to Perdition\n\n@Mr_tarikh",
     "media_type": "photo",
     "category": "general",
-    "score": 190.983,
+    "score": 138.946,
     "used": true
   },
   {
     "channel": "Anjomane_bozorgan",
-    "message_id": 21,
-    "text": "آنچه پایانی ندارد\nنه تویی\nو نه من ؛\nاین انسانیت است که تا ابد \nفریاد کشیده خواهد شد ...\n\n👤 ارنستو چگوارا\n\n#انجمن_بزرگان_و_اندیشمندان \n🆔 @Anjomane_bozorgan",
+    "message_id": 25,
+    "text": "برای نابود کردن یک فرهنگ ،\nنیازی نیست که کتاب‌ها را بسوزانند ؛\nکافیست کاری کنند که مردم آنها را نخوانند ...\n\n 👤 ویکتور هوگو\n\n#انجمن_بزرگان_و_اندیشمندان \n🆔 @Anjomane_bozorgan",
     "media_type": "photo",
     "category": "sokhan_bozorgan",
-    "score": 197.567,
-    "used": true
+    "score": 102.682,
+    "used": false
   },
   {
     "channel": "World5History",
-    "message_id": 227,
-    "text": " پرتره خانم خانه دار در قرن هجدهم در حال اتو کشیدن         پاریس 1890 @tssjahan",
+    "message_id": 241,
+    "text": "عکس چند طلبه در اصفهان 1880میلادی           @tssjahan",
     "media_type": "photo",
     "category": "aks_iran_qadim",
-    "score": 12.802,
+    "score": 14.716,
     "used": false
   },
   {
     "channel": "IranAncient",
-    "message_id": 93,
-    "text": "شکل پایین تصویر یکی از آثار به دست آمده از معبد اینشوشیناک در شوش دوره ی ایلامی را نشان می دهد که در آن یک جوجه تیغی بر روی چرخی ایستاده است. جنس جوجه تیغی از سنگ آهک و جنس چرخ از قیر طبیعی است. اندازه های واقعی شکل از این قرار است: طول: 6.8 سانتی متر، عرض : 5.5 سانتی متر و قطر : 0.9 سانتی متر. ساخت این اثر به 3500 تا 3200 سال پیش باز می گردد و اکنون در موزه ی لوور قرار دارد.\n@ElamiteHistorian",
-    "media_type": null,
-    "category": "hekayat_dastan_sher",
-    "score": 4.534,
-    "used": true
+    "message_id": 100,
+    "text": "گل نبشته مربوط به دوره پروتوایلامی با علائم نگارشی و شمارشی \n@ElamiteHistorian",
+    "media_type": "photo",
+    "category": "aks_iran_qadim",
+    "score": 18.503,
+    "used": false
   },
   {
     "channel": "AsrTarikh",
-    "message_id": 39129,
-    "text": "برای دومین بار طی دو هفته اخیر، لاشه یک نهنگ در سواحل جزیره کیش مشاهده شد.\n\n@bi3ansor",
+    "message_id": 39132,
+    "text": "کره شمالی بین ده کشور عقب مانده \nو کره جنوبی در ردیف ده اقتصاد برتر!\nیک نژاد، یک سرزمین، و آب و هوای مشترک!\nتفاوت این دو کشور در چیست؟\nساختار و سیاست!\n در کره جنوبی وزارت اول:  آموزش و پرورش \nاما در کره‌شمالی: ارتش\n\n@bi3ansor",
     "media_type": "photo",
     "category": "general",
-    "score": 48.592,
+    "score": 530.633,
     "used": true
   },
   {
     "channel": "ancientir",
-    "message_id": 47,
-    "text": "حضور زنان و مردان در ورزشگاه آریامهر ۱۳۵۵\n\n@ancientir",
+    "message_id": 50,
+    "text": "اولین اختلاس رو آقای بلات رئیس آلمانی بانک ملی ایران تو زمان رضاشاه انجام داد و به لبنان فرار کرد ، اما به ایران برگردونده شد و به 18 ماه حبس و 63هزار تومن جریمه محکوم شد\n\n@ancientir",
     "media_type": "photo",
     "category": "general",
-    "score": 109.294,
+    "score": 201.261,
     "used": true
   }
 ]
