@@ -20,6 +20,7 @@ import requests
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import process_book_caption, build_book_filename
+from book_excerpts import generate_excerpt_items
 
 API_BASE = f"https://api.telegram.org/bot{config.BOT_TOKEN}"
 FILE_BASE = f"https://api.telegram.org/file/bot{config.BOT_TOKEN}"
