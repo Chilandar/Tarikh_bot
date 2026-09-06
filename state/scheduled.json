@@ -1,10 +1,5 @@
 [
   {
-    "slot_key": "16-2026-09-06",
-    "message_id": 2158,
-    "type": "post"
-  },
-  {
     "slot_key": "16-2026-09-07",
     "message_id": 2163,
     "type": "post"
@@ -83,16 +78,6 @@
     "slot_key": "16-2026-09-17",
     "message_id": 2244,
     "type": "post"
-  },
-  {
-    "slot_key": "19-book-2026-09-06-0",
-    "message_id": 2249,
-    "type": "book"
-  },
-  {
-    "slot_key": "19-book-2026-09-06-1",
-    "message_id": 2250,
-    "type": "book"
   },
   {
     "slot_key": "19-book-2026-09-07-0",
