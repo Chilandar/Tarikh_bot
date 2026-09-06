@@ -186,16 +186,21 @@ def main():
             try:
                 pages = get_book_pages(dest_path)
 
+                # صفحات رو بین گلچین و کوییز تقسیم می‌کنیم تا هیچ‌وقت یه صفحه/موضوع
+                # هم پست بشه هم کوییز - هرکدوم فقط از نیمی از صفحات (متفاوت) ساخته می‌شن
+                excerpt_pages = pages[0::2]
+                quiz_pages = pages[1::2]
+
                 excerpt_items = generate_excerpt_items(config.GEMINI_API_KEY, dest_path, {
                     "book_title": parsed["book_title"],
                     "author_line": parsed.get("author_line"),
                     "translator_line": parsed.get("translator_line"),
-                }, pages=pages)
+                }, pages=excerpt_pages)
                 if excerpt_items:
                     post_queue.extend(excerpt_items)
                     send_bot_message(f"📖 {len(excerpt_items)} گلچین از «{new_filename}» استخراج شد.")
 
-                quiz_items = generate_quiz_items(config.GEMINI_API_KEY, pages, parsed["book_title"])
+                quiz_items = generate_quiz_items(config.GEMINI_API_KEY, quiz_pages, parsed["book_title"])
                 if quiz_items:
                     quiz_queue.extend(quiz_items)
                     send_bot_message(f"🧩 {len(quiz_items)} سوال کوییز از «{new_filename}» ساخته شد.")
