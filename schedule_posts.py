@@ -6,21 +6,23 @@
 
 قوانین اسلات‌ها (به‌وقت تهران):
   ۱۰:۰۰ و ۱۳:۰۰  -> عمومی
-  ۱۶:۰۰          -> یکی‌درمیون: سخن بزرگان / تصاویر ایران قدیم
+  ۱۶:۰۰          -> یکی‌درمیون (سخن بزرگان/تصاویر ایران قدیم) + ۲ کوییز از کتاب‌ها
   ۱۹:۰۰          -> یک پست حکایت/داستان/شعر + ۲ کتاب (مستقل از هم)
-  ۲۲:۰۰          -> دست‌نخورده، متعلق به خود کاربره
+  ۲۲:۰۰          -> پست جذاب (گلچین) از کتاب‌ها، با منبع
 
 اجرا: python schedule_posts.py
 """
 
 import datetime
 import os
+import random
 import pytz
 
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import clean_channel_post_text
-from telethon.tl.functions.messages import GetScheduledHistoryRequest
+from telethon.tl.functions.messages import GetScheduledHistoryRequest, SendMediaRequest
+from telethon.tl.types import InputMediaPoll, Poll, PollAnswer
 
 LOOKAHEAD_DAYS = 14
 ALTERNATOR_FILE = config.STATE_DIR + "/alternator.json"
@@ -64,6 +66,45 @@ def pop_next_book(book_queue):
         if not item.get("used"):
             item["used"] = True
             return item
+    return None
+
+
+def pop_next_quiz(quiz_queue):
+    for item in quiz_queue:
+        if not item.get("used"):
+            item["used"] = True
+            return item
+    return None
+
+
+def send_quiz_poll(client, entity, quiz: dict, schedule_dt: datetime.datetime):
+    """
+    یک Poll تعاملی از نوع quiz می‌سازه. فقط «پاسخ درست» (quiz=True) و
+    «ترتیب تصادفی گزینه‌ها» (که موقع ساخت سوال در quiz_extract.py انجام شده)
+    فعاله؛ چندجوابی و نمایش عمومی رأی‌دهنده‌ها خاموشه.
+    """
+    answers = [
+        PollAnswer(text=opt, option=bytes([i]))
+        for i, opt in enumerate(quiz["options"])
+    ]
+    poll = Poll(
+        id=random.randint(1, 2**31 - 1),
+        question=quiz["question"],
+        answers=answers,
+        quiz=True,
+        multiple_choice=False,
+        public_voters=False,
+    )
+    media = InputMediaPoll(
+        poll=poll,
+        correct_answers=[bytes([quiz["correct_index"]])],
+        solution=quiz.get("explanation", ""),
+        solution_entities=[],
+    )
+    result = client(SendMediaRequest(peer=entity, media=media, message="", schedule_date=schedule_dt))
+    for upd in result.updates:
+        if hasattr(upd, "message") and hasattr(upd.message, "id"):
+            return upd.message.id
     return None
 
 
@@ -135,11 +176,13 @@ def verify_and_clean_scheduled(client, entity, scheduled: list) -> list:
 def main():
     post_queue = load_json(config.POST_QUEUE_FILE, [])
     book_queue = load_json(config.BOOK_QUEUE_FILE, [])
+    quiz_queue = load_json(config.QUIZ_QUEUE_FILE, [])
     scheduled = load_json(config.SCHEDULED_FILE, [])
     alternator = load_json(ALTERNATOR_FILE, {})
 
     books_scheduled_count = 0
     posts_scheduled_count = 0
+    quizzes_scheduled_count = 0
 
     with get_client() as client:
         entity = client.get_entity(config.TARGET_CHANNEL)
@@ -156,19 +199,33 @@ def main():
 
             if hour == 16:
                 base_key = f"16-{slot_dt.date()}"
-                if base_key in occupied_slots:
-                    continue
-                category = get_16_category(alternator)
-                item = pop_best(post_queue, category=category)
-                if not item:
-                    continue
-                msg_id = send_post(client, entity, item, slot_dt)
-                if msg_id is None:
-                    print(f"⚠️ پست دسته {category} به‌خاطر نبودن مدیا رد شد.")
-                    continue
-                scheduled.append({"slot_key": base_key, "message_id": msg_id, "type": "post"})
-                occupied_slots.add(base_key)
-                posts_scheduled_count += 1
+                if base_key not in occupied_slots:
+                    category = get_16_category(alternator)
+                    item = pop_best(post_queue, category=category)
+                    if item:
+                        msg_id = send_post(client, entity, item, slot_dt)
+                        if msg_id is None:
+                            print(f"⚠️ پست دسته {category} به‌خاطر نبودن مدیا رد شد.")
+                        else:
+                            scheduled.append({"slot_key": base_key, "message_id": msg_id, "type": "post"})
+                            occupied_slots.add(base_key)
+                            posts_scheduled_count += 1
+
+                for i in range(config.QUIZZES_PER_16_SLOT):
+                    quiz_slot_key = f"16-quiz-{slot_dt.date()}-{i}"
+                    if quiz_slot_key in occupied_slots:
+                        continue
+                    quiz = pop_next_quiz(quiz_queue)
+                    if not quiz:
+                        break  # فعلاً سوال آماده‌ای در صف کوییز نیست
+                    quiz_dt = slot_dt + datetime.timedelta(minutes=2 * (i + 1))
+                    msg_id = send_quiz_poll(client, entity, quiz, quiz_dt)
+                    if msg_id is None:
+                        print("⚠️ کوییز به‌خاطر خطا در ارسال رد شد.")
+                        continue
+                    scheduled.append({"slot_key": quiz_slot_key, "message_id": msg_id, "type": "quiz"})
+                    occupied_slots.add(quiz_slot_key)
+                    quizzes_scheduled_count += 1
 
             elif hour == 19:
                 hekayat_base_key = f"19-hekayat-{slot_dt.date()}"
@@ -196,6 +253,23 @@ def main():
                     occupied_slots.add(book_slot_key)
                     books_scheduled_count += 1
 
+            elif hour == 22:
+                for i in range(config.BOOK_EXCERPTS_PER_22_SLOT):
+                    excerpt_slot_key = f"22-bookexcerpt-{slot_dt.date()}-{i}"
+                    if excerpt_slot_key in occupied_slots:
+                        continue
+                    excerpt_item = pop_best(post_queue, category=config.CATEGORY_BOOK_EXCERPT)
+                    if not excerpt_item:
+                        break
+                    excerpt_dt = slot_dt + datetime.timedelta(minutes=2 * i)
+                    msg_id = send_post(client, entity, excerpt_item, excerpt_dt)
+                    if msg_id is None:
+                        print("⚠️ پست کتاب به‌خاطر خطا در ارسال رد شد.")
+                        continue
+                    scheduled.append({"slot_key": excerpt_slot_key, "message_id": msg_id, "type": "post"})
+                    occupied_slots.add(excerpt_slot_key)
+                    posts_scheduled_count += 1
+
             else:
                 if slot_key in occupied_slots:
                     continue
@@ -212,12 +286,16 @@ def main():
 
     save_json(config.POST_QUEUE_FILE, post_queue)
     save_json(config.BOOK_QUEUE_FILE, book_queue)
+    save_json(config.QUIZ_QUEUE_FILE, quiz_queue)
     save_json(config.SCHEDULED_FILE, scheduled)
     save_json(ALTERNATOR_FILE, alternator)
 
-    summary = f"وضعیت زمان‌بندی به‌روزرسانی شد. {posts_scheduled_count} پست و {books_scheduled_count} کتاب جدید زمان‌بندی شد (مجموع فعال: {len(scheduled)})"
+    summary = (
+        f"وضعیت زمان‌بندی به‌روزرسانی شد. {posts_scheduled_count} پست، {books_scheduled_count} کتاب و "
+        f"{quizzes_scheduled_count} کوییز جدید زمان‌بندی شد (مجموع فعال: {len(scheduled)})"
+    )
     print(summary)
-    if posts_scheduled_count or books_scheduled_count:
+    if posts_scheduled_count or books_scheduled_count or quizzes_scheduled_count:
         send_bot_message(f"📅 {summary}")
 
 
