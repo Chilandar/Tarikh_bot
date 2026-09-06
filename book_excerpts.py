@@ -125,17 +125,21 @@ def build_excerpt_caption(quote: str, book_meta: dict, page_num: int) -> str:
     return f"{bold}\n\n{config.SIGNATURE}"
 
 
-def generate_excerpt_items(api_key: str, pdf_path: str, book_meta: dict):
+def generate_excerpt_items(api_key: str, pdf_path: str, book_meta: dict, pages=None):
     """
     کل فرآیند: صفحات کتاب رو می‌خونه، از هرکدوم گلچین می‌گیره، و لیست
     آیتم‌های آماده برای اضافه‌شدن به صف پست رو برمی‌گردونه. تعداد خروجی
     متغیره - هرچی واقعاً جالب پیدا بشه.
+
+    اگه `pages` از بیرون داده بشه (مثلاً چون همون صفحات برای ساخت کوییز هم
+    لازمه)، دوباره OCR/خوندن PDF انجام نمی‌شه.
     """
     if not api_key:
         print("GEMINI_API_KEY تنظیم نشده - استخراج گلچین از کتاب رد شد.")
         return []
 
-    pages = get_book_pages(pdf_path)
+    if pages is None:
+        pages = get_book_pages(pdf_path)
     items = []
 
     for page_num, page_text in pages:
