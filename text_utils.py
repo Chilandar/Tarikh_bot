@@ -274,6 +274,8 @@ def process_book_caption(raw_caption: str):
         "book_title": book_title or "کتاب بدون‌نام",
         "filename_title": _strip_ketab_prefix(book_title or "کتاب بدون‌نام"),
         "volume_number": volume_number,
+        "author_line": author_line,
+        "translator_line": translator_line,
     }
 
 
