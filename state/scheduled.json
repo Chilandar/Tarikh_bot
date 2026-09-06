@@ -90,11 +90,6 @@
     "type": "post"
   },
   {
-    "slot_key": "2026-09-06T10:00:00+03:30",
-    "message_id": 2247,
-    "type": "post"
-  },
-  {
     "slot_key": "19-book-2026-09-06-0",
     "message_id": 2249,
     "type": "book"
