@@ -13,6 +13,7 @@ API_ID = int(os.environ.get("TG_API_ID", "0"))
 API_HASH = os.environ.get("TG_API_HASH", "")
 SESSION_STRING = os.environ.get("TG_SESSION_STRING", "")  # با get_session.py ساخته می‌شه
 BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")  # از BotFather
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 # آیدی عددی کانال خودت (نه یوزرنیم) - عدد منفی بزرگ، با get_session.py قابل پیدا کردنه
 TARGET_CHANNEL = os.environ.get("TG_TARGET_CHANNEL", "@Tarikhgan")
