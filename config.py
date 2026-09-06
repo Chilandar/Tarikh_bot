@@ -60,7 +60,7 @@ CATEGORY_SOKHAN_BOZORGAN = "sokhan_bozorgan"      # سخن بزرگان
 CATEGORY_AKS_IRAN_QADIM = "aks_iran_qadim"        # تصاویر ایران قدیم
 CATEGORY_HEKAYAT = "hekayat_dastan_sher"          # حکایت، داستان، شعر
 CATEGORY_GENERAL = "general"                       # عمومی (برای اسلات‌های ۱۰ و ۱۳)
-
+CATEGORY_BOOK_EXCERPT = "book_excerpt"
 CATEGORY_KEYWORDS = {
     CATEGORY_SOKHAN_BOZORGAN: [
     # فقط اسم اشخاص معروف - کلمات عمومی مثل "گفت"/"می‌گوید" عمداً حذف
@@ -131,6 +131,8 @@ RESERVED_CATEGORIES = {CATEGORY_SOKHAN_BOZORGAN, CATEGORY_AKS_IRAN_QADIM, CATEGO
 # ---------------------------------------------------------------------------
 MIN_TEXT_LEN = 50
 MAX_TEXT_LEN = 600
+BOOK_EXCERPT_MAX_PAGES = 60
+BOOK_EXCERPT_MIN_TEXT_PER_PAGE = 50
 
 # ---------------------------------------------------------------------------
 # محدودیت‌های اجرای هر بار
