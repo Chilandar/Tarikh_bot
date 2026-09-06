@@ -98,7 +98,15 @@ class ChannelScanner:
             return None
 
         has_media = media_type is not None
-        category = detect_category(text, has_media=has_media)
+
+        ai_result = classify_with_gemini(config.GEMINI_API_KEY, text, has_media) if config.GEMINI_API_KEY else None
+        if ai_result:
+            if not ai_result["is_good"]:
+                return None
+            category = ai_result["category"]
+        else:
+            category = detect_category(text, has_media=has_media)
+
         if config.CATEGORY_REQUIRES_IMAGE.get(category, False) and not has_media:
             return None
 
