@@ -160,11 +160,6 @@
     "type": "post"
   },
   {
-    "slot_key": "19-hekayat-2026-09-06",
-    "message_id": 2286,
-    "type": "post"
-  },
-  {
     "slot_key": "2026-09-11T13:00:00+03:30",
     "message_id": 2287,
     "type": "post"
@@ -172,16 +167,6 @@
   {
     "slot_key": "16-2026-09-20",
     "message_id": 2289,
-    "type": "post"
-  },
-  {
-    "slot_key": "19-book-2026-09-09-1",
-    "message_id": 2290,
-    "type": "book"
-  },
-  {
-    "slot_key": "2026-09-10T10:00:00+03:30",
-    "message_id": 2291,
     "type": "post"
   },
   {
@@ -195,28 +180,8 @@
     "type": "post"
   },
   {
-    "slot_key": "2026-09-13T10:00:00+03:30",
-    "message_id": 2294,
-    "type": "post"
-  },
-  {
-    "slot_key": "2026-09-13T13:00:00+03:30",
-    "message_id": 2295,
-    "type": "post"
-  },
-  {
-    "slot_key": "2026-09-14T10:00:00+03:30",
-    "message_id": 2296,
-    "type": "post"
-  },
-  {
-    "slot_key": "2026-09-15T10:00:00+03:30",
-    "message_id": 2297,
-    "type": "post"
-  },
-  {
     "slot_key": "16-2026-09-16",
-    "message_id": 2298,
+    "message_id": 2299,
     "type": "post"
   }
 ]
