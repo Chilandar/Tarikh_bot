@@ -18,6 +18,7 @@ import datetime
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message, resolve_source_entity
 from text_utils import detect_category, text_hash_for_dedupe
+from ai_classify import classify_with_gemini
 
 import pytz
 
