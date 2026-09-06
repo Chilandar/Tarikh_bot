@@ -82,6 +82,10 @@ def has_media(item: dict) -> bool:
 
 
 def send_post(client, entity, item: dict, schedule_dt: datetime.datetime):
+    if item.get("source_type") == "book_excerpt":
+        sent = client.send_message(entity, item["caption"], schedule=schedule_dt)
+        return sent.id
+
     final_text = clean_channel_post_text(item["text"])
 
     if has_media(item):
