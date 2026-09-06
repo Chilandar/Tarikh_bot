@@ -124,7 +124,7 @@ CATEGORY_REQUIRES_IMAGE = {
 }
 
 # دسته‌هایی که برای اسلات‌های اختصاصی (۱۶ و ۱۹) رزرو شدن و اسلات‌های عمومی (۱۰، ۱۳) بهشون دست نمی‌زنن
-RESERVED_CATEGORIES = {CATEGORY_SOKHAN_BOZORGAN, CATEGORY_AKS_IRAN_QADIM, CATEGORY_HEKAYAT}
+RESERVED_CATEGORIES = {CATEGORY_SOKHAN_BOZORGAN, CATEGORY_AKS_IRAN_QADIM, CATEGORY_HEKAYAT, CATEGORY_BOOK_EXCERPT}
 
 # ---------------------------------------------------------------------------
 # فیلترهای طول متن
