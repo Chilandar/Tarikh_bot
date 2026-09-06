@@ -140,7 +140,8 @@ BOOK_EXCERPT_MIN_TEXT_PER_PAGE = 50
 HISTORY_MESSAGES_PER_RUN = 10   # هر اجرا حداکثر این تعداد پیام "خوب و واجدشرایط" به صف اضافه می‌شه
 HISTORY_RAW_SCAN_CAP = 300       # حداکثر تعداد پیام خامی که برای رسیدن به همون ۱۰ تا، اجازه داریم بخونیم (ایمنی در برابر پیمایش بی‌پایان)
 BOOKS_PER_SLOT = 2               # هر روز، این تعداد کتاب برای ساعت ۱۹ زمان‌بندی می‌شه
-
+QUIZZES_PER_16_SLOT = 2           # هر روز، این تعداد کوییز برای ساعت ۱۶ زمان‌بندی می‌شه
+BOOK_EXCERPTS_PER_22_SLOT = 1     # هر روز، این تعداد پست جذاب از کتاب برای ساعت ۲۲ زمان‌بندی می‌شه
 # ---------------------------------------------------------------------------
 # امضای نهایی که جایگزین آیدی/یوزرنیم منبع می‌شه
 # ---------------------------------------------------------------------------
@@ -159,3 +160,4 @@ LAST_COMMAND_UPDATE_ID_FILE = os.path.join(STATE_DIR, "last_command_update_id.js
 SHARED_UPDATE_ID_FILE = os.path.join(STATE_DIR, "telegram_update_offset.json")  # تنها ردیاب offset تلگرام (باید مشترک باشه)
 SCAN_FLAG_FILE = os.path.join(STATE_DIR, "scan_requested.json")            # آیا کاربر /scan فرستاده و هنوز اجرا نشده
 CHANNEL_STATS_FILE = os.path.join(STATE_DIR, "channel_stats.json")         # میانگین بازدید هر کانال
+QUIZ_QUEUE_FILE = os.path.join(STATE_DIR, "quiz_queue.json")
