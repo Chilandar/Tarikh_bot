@@ -27,9 +27,7 @@ API_BASE = f"https://api.telegram.org/bot{config.BOT_TOKEN}"
 FILE_BASE = f"https://api.telegram.org/file/bot{config.BOT_TOKEN}"
 
 SCAN_KEYBOARD = {
-    "keyboard": [[{"text": config.SCAN_COMMAND_TEXT}]],
-    "resize_keyboard": True,
-    "is_persistent": True,
+    "inline_keyboard": [[{"text": "🔍 شروع اسکن", "callback_data": config.SCAN_COMMAND_TEXT}]],
 }
 
 
@@ -131,6 +129,16 @@ def main():
 
     for update in updates:
         max_update_id = max(max_update_id, update["update_id"])
+
+        callback = update.get("callback_query")
+        if callback:
+            if callback.get("from", {}).get("id") == config.OWNER_USER_ID and callback.get("data") == config.SCAN_COMMAND_TEXT:
+                scan_flag["pending"] = True
+                try:
+                    requests.post(f"{API_BASE}/answerCallbackQuery", data={"callback_query_id": callback["id"]}, timeout=10)
+                except requests.RequestException:
+                    pass
+            continue
 
         msg = update.get("message")
         if not msg:
