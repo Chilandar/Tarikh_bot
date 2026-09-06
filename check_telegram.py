@@ -121,6 +121,7 @@ def main():
 
     scan_flag = load_json(config.SCAN_FLAG_FILE, {"pending": False})
     book_queue = load_json(config.BOOK_QUEUE_FILE, [])
+    post_queue = load_json(config.POST_QUEUE_FILE, [])
 
     max_update_id = last["update_id"]
     books_added = 0
@@ -179,6 +180,18 @@ def main():
                 "used": False,
             })
             books_added += 1
+
+            try:
+                excerpt_items = generate_excerpt_items(config.GEMINI_API_KEY, dest_path, {
+                    "book_title": parsed["book_title"],
+                    "author_line": parsed.get("author_line"),
+                    "translator_line": parsed.get("translator_line"),
+                })
+                if excerpt_items:
+                    post_queue.extend(excerpt_items)
+                    send_bot_message(f"📖 {len(excerpt_items)} گلچین از «{new_filename}» استخراج شد.")
+            except Exception as e:
+                print(f"⚠️ استخراج گلچین از کتاب با خطا مواجه شد: {e}")
         except Exception as e:
             books_failed += 1
             print(f"⚠️ پردازش یک فایل کتاب با خطا مواجه شد: {e}")
@@ -189,6 +202,7 @@ def main():
     save_json(config.SHARED_UPDATE_ID_FILE, last)
     save_json(config.SCAN_FLAG_FILE, scan_flag)
     save_json(config.BOOK_QUEUE_FILE, book_queue)
+    save_json(config.POST_QUEUE_FILE, post_queue)
 
     print(f"{len(updates)} پیام بررسی شد. {books_added} کتاب اضافه شد، {books_failed} کتاب شکست خورد. /scan در انتظار: {scan_flag['pending']}")
     if books_added:
