@@ -5,30 +5,23 @@
      زمان‌بندی شده - نه از یک فایل محلی که با جابه‌جایی دستیِ شما به‌روز نمی‌مونه.
   ۲. برای هر (روز، ساعت)ی که هنوز به ظرفیتش نرسیده، محتوای مناسب اضافه می‌کنه.
 
-این یعنی اگه شما یه پیام رو دستی از یک ساعت به ساعت دیگه منتقل کنید، دفعه‌ی
-بعد که ربات اجرا می‌شه، خودش می‌فهمه ساعت مبدا خالی شده (و پرش می‌کنه) و ساعت
-مقصد پر شده (و روش چیز اضافه‌ای نمی‌ذاره) - چون همیشه از روی واقعیتِ زنده‌ی
-تلگرام تصمیم می‌گیره، نه از روی حافظه‌ی قدیمی.
-
 قوانین ظرفیت هر ساعت (به‌وقت تهران):
   ۱۰:۰۰ و ۱۳:۰۰  -> ظرفیت ۱ (عمومی)
-  ۱۶:۰۰          -> ظرفیت ۱ + QUIZZES_PER_16_SLOT (پایه + کوییز)
+  ۱۶:۰۰          -> ظرفیت ۱ (سخن بزرگان/تصاویر قدیم، یکی‌درمیون)
   ۱۹:۰۰          -> ظرفیت ۱ + BOOKS_PER_SLOT (حکایت + کتاب)
-  ۲۲:۰۰          -> ظرفیت BOOK_EXCERPTS_PER_22_SLOT (گلچین از کتاب)
+  ۲۲:۰۰          -> دست‌نخورده، کاملاً متعلق به خود کاربره
 
 اجرا: python schedule_posts.py
 """
 
 import datetime
 import os
-import random
 import pytz
 
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import clean_channel_post_text
-from telethon.tl.functions.messages import GetScheduledHistoryRequest, SendMediaRequest
-from telethon.tl.types import InputMediaPoll, Poll, PollAnswer
+from telethon.tl.functions.messages import GetScheduledHistoryRequest
 
 LOOKAHEAD_DAYS = 14
 ALTERNATOR_FILE = config.STATE_DIR + "/alternator.json"
@@ -39,13 +32,9 @@ def tz_now():
 
 
 def hour_capacity(hour: int) -> int:
-    if hour == 16:
-        return 1 + config.QUIZZES_PER_16_SLOT
     if hour == 19:
         return 1 + config.BOOKS_PER_SLOT
-    if hour == 22:
-        return config.BOOK_EXCERPTS_PER_22_SLOT
-    return 1  # اسلات‌های عمومی (۱۰، ۱۳)
+    return 1  # اسلات‌های عمومی و ۱۶ (۱۰، ۱۳، ۱۶)
 
 
 def get_live_hour_counts(client, entity):
@@ -90,14 +79,6 @@ def pop_next_book(book_queue):
     return None
 
 
-def pop_next_quiz(quiz_queue):
-    for item in quiz_queue:
-        if not item.get("used"):
-            item["used"] = True
-            return item
-    return None
-
-
 def get_16_category(alternator: dict) -> str:
     last = alternator.get("last_16_category")
     if last == config.CATEGORY_SOKHAN_BOZORGAN:
@@ -113,10 +94,6 @@ def has_media(item: dict) -> bool:
 
 
 def send_post(client, entity, item: dict, schedule_dt: datetime.datetime):
-    if item.get("source_type") == "book_excerpt":
-        sent = client.send_message(entity, item["caption"], schedule=schedule_dt)
-        return sent.id
-
     final_text = clean_channel_post_text(item["text"])
 
     if has_media(item):
@@ -148,38 +125,7 @@ def send_book(client, entity, book_item: dict, schedule_dt: datetime.datetime):
     return sent.id
 
 
-def send_quiz_poll(client, entity, quiz: dict, schedule_dt: datetime.datetime):
-    """
-    یک Poll تعاملی از نوع quiz می‌سازه. فقط «پاسخ درست» (quiz=True) و
-    «ترتیب تصادفی گزینه‌ها» (که موقع ساخت سوال در quiz_extract.py انجام شده)
-    فعاله؛ چندجوابی و نمایش عمومی رأی‌دهنده‌ها خاموشه.
-    """
-    answers = [
-        PollAnswer(text=opt, option=bytes([i]))
-        for i, opt in enumerate(quiz["options"])
-    ]
-    poll = Poll(
-        id=random.randint(1, 2**31 - 1),
-        question=quiz["question"],
-        answers=answers,
-        quiz=True,
-        multiple_choice=False,
-        public_voters=False,
-    )
-    media = InputMediaPoll(
-        poll=poll,
-        correct_answers=[bytes([quiz["correct_index"]])],
-        solution=quiz.get("explanation", ""),
-        solution_entities=[],
-    )
-    result = client(SendMediaRequest(peer=entity, media=media, message="", schedule_date=schedule_dt))
-    for upd in result.updates:
-        if hasattr(upd, "message") and hasattr(upd.message, "id"):
-            return upd.message.id
-    return None
-
-
-def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, quiz_queue, alternator, counters):
+def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, alternator, counters):
     tz = pytz.timezone(config.TIMEZONE)
     slot_dt = tz.localize(datetime.datetime.combine(day, datetime.time(hour=hour)))
     filled_here = 0
@@ -192,21 +138,8 @@ def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, 
                 msg_id = send_post(client, entity, item, slot_dt)
                 if msg_id:
                     counters["posts"] += 1
-                    filled_here += 1
                 else:
                     print(f"⚠️ پست دسته {category} به‌خاطر نبودن مدیا رد شد.")
-        remaining = need - filled_here
-        for j in range(max(remaining, 0)):
-            quiz = pop_next_quiz(quiz_queue)
-            if not quiz:
-                break
-            idx = already + filled_here + j
-            q_dt = slot_dt + datetime.timedelta(minutes=2 * idx)
-            msg_id = send_quiz_poll(client, entity, quiz, q_dt)
-            if msg_id:
-                counters["quizzes"] += 1
-            else:
-                print("⚠️ کوییز به‌خاطر خطا در ارسال رد شد.")
 
     elif hour == 19:
         if already == 0:
@@ -229,19 +162,6 @@ def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, 
             if msg_id:
                 counters["books"] += 1
 
-    elif hour == 22:
-        for j in range(need):
-            excerpt_item = pop_best(post_queue, category=config.CATEGORY_BOOK_EXCERPT)
-            if not excerpt_item:
-                break
-            idx = already + j
-            e_dt = slot_dt + datetime.timedelta(minutes=2 * idx)
-            msg_id = send_post(client, entity, excerpt_item, e_dt)
-            if msg_id:
-                counters["posts"] += 1
-            else:
-                print("⚠️ پست کتاب به‌خاطر خطا در ارسال رد شد.")
-
     else:  # اسلات‌های عمومی (۱۰، ۱۳)
         for j in range(need):
             item = pop_best(post_queue, exclude_categories=config.RESERVED_CATEGORIES)
@@ -259,10 +179,9 @@ def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, 
 def main():
     post_queue = load_json(config.POST_QUEUE_FILE, [])
     book_queue = load_json(config.BOOK_QUEUE_FILE, [])
-    quiz_queue = load_json(config.QUIZ_QUEUE_FILE, [])
     alternator = load_json(ALTERNATOR_FILE, {})
 
-    counters = {"posts": 0, "books": 0, "quizzes": 0}
+    counters = {"posts": 0, "books": 0}
 
     with get_client() as client:
         entity = client.get_entity(config.TARGET_CHANNEL)
@@ -274,6 +193,9 @@ def main():
         for day_offset in range(LOOKAHEAD_DAYS + 1):
             day = (now + datetime.timedelta(days=day_offset)).date()
             for hour in config.POSTING_HOURS:
+                if hour in config.RESERVED_HOURS:
+                    continue  # ساعت ۲۲ - کاملاً دست‌نخورده، متعلق به خود کاربره
+
                 tz = pytz.timezone(config.TIMEZONE)
                 slot_dt = tz.localize(datetime.datetime.combine(day, datetime.time(hour=hour)))
                 if slot_dt <= now:
@@ -286,16 +208,15 @@ def main():
                     continue
 
                 fill_hour(client, entity, day, hour, already, need,
-                          post_queue, book_queue, quiz_queue, alternator, counters)
+                          post_queue, book_queue, alternator, counters)
 
     save_json(config.POST_QUEUE_FILE, post_queue)
     save_json(config.BOOK_QUEUE_FILE, book_queue)
-    save_json(config.QUIZ_QUEUE_FILE, quiz_queue)
     save_json(ALTERNATOR_FILE, alternator)
 
     summary = (
-        f"وضعیت زمان‌بندی به‌روزرسانی شد. {counters['posts']} پست، {counters['books']} کتاب و "
-        f"{counters['quizzes']} کوییز جدید زمان‌بندی شد (بر اساس شمارش زنده‌ی تلگرام)."
+        f"وضعیت زمان‌بندی به‌روزرسانی شد. {counters['posts']} پست و {counters['books']} کتاب جدید "
+        f"زمان‌بندی شد (بر اساس شمارش زنده‌ی تلگرام)."
     )
     print(summary)
     if any(counters.values()):
