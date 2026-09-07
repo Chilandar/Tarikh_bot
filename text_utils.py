@@ -84,6 +84,18 @@ def strip_trailing_signature_block(text: str) -> str:
         lines.pop()
     return "\n".join(lines)
 
+def get_visible_content_length(original_text: str) -> int:
+    """
+    طول متنی که بعد از حذف امضا/آیدی/لینک واقعاً باقی می‌مونه رو برمی‌گردونه -
+    برای اینکه بفهمیم آیا پست واقعاً محتوا داره یا فقط امضا/تبلیغ بوده.
+    """
+    text = strip_trailing_signature_block(original_text or "")
+    text = USERNAME_RE.sub("", text)
+    text = TME_LINK_RE.sub("", text)
+    return len(text.strip())
+
+
+MIN_VISIBLE_CONTENT_LEN = 20  # زیر این مقدار یعنی عملاً چیزی برای گفتن نمونده
 
 def clean_channel_post_text(original_text: str) -> str:
     """
