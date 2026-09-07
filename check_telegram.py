@@ -20,8 +20,7 @@ import requests
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import process_book_caption, build_book_filename
-from book_excerpts import generate_excerpt_items, get_book_pages
-from quiz_extract import generate_quiz_items
+
 
 API_BASE = f"https://api.telegram.org/bot{config.BOT_TOKEN}"
 FILE_BASE = f"https://api.telegram.org/file/bot{config.BOT_TOKEN}"
@@ -119,7 +118,6 @@ def main():
         return
 
     scan_flag = load_json(config.SCAN_FLAG_FILE, {"pending": False})
-    book_queue = load_json(config.BOOK_QUEUE_FILE, [])
     post_queue = load_json(config.POST_QUEUE_FILE, [])
     quiz_queue = load_json(config.QUIZ_QUEUE_FILE, [])
 
@@ -190,30 +188,6 @@ def main():
                 "used": False,
             })
             books_added += 1
-
-            try:
-                pages = get_book_pages(dest_path)
-
-                # صفحات رو بین گلچین و کوییز تقسیم می‌کنیم تا هیچ‌وقت یه صفحه/موضوع
-                # هم پست بشه هم کوییز - هرکدوم فقط از نیمی از صفحات (متفاوت) ساخته می‌شن
-                excerpt_pages = pages[0::2]
-                quiz_pages = pages[1::2]
-
-                excerpt_items = generate_excerpt_items(config.GEMINI_API_KEY, dest_path, {
-                    "book_title": parsed["book_title"],
-                    "author_line": parsed.get("author_line"),
-                    "translator_line": parsed.get("translator_line"),
-                }, pages=excerpt_pages)
-                if excerpt_items:
-                    post_queue.extend(excerpt_items)
-                    send_bot_message(f"📖 {len(excerpt_items)} گلچین از «{new_filename}» استخراج شد.")
-
-                quiz_items = generate_quiz_items(config.GEMINI_API_KEY, quiz_pages, parsed["book_title"])
-                if quiz_items:
-                    quiz_queue.extend(quiz_items)
-                    send_bot_message(f"🧩 {len(quiz_items)} سوال کوییز از «{new_filename}» ساخته شد.")
-            except Exception as e:
-                print(f"⚠️ استخراج گلچین/کوییز از کتاب با خطا مواجه شد: {e}")
         except Exception as e:
             books_failed += 1
             print(f"⚠️ پردازش یک فایل کتاب با خطا مواجه شد: {e}")
@@ -225,8 +199,6 @@ def main():
     save_json(config.SCAN_FLAG_FILE, scan_flag)
     save_json(config.BOOK_QUEUE_FILE, book_queue)
     save_json(config.POST_QUEUE_FILE, post_queue)
-    save_json(config.QUIZ_QUEUE_FILE, quiz_queue)
-
     print(f"{len(updates)} پیام بررسی شد. {books_added} کتاب اضافه شد، {books_failed} کتاب شکست خورد. /scan در انتظار: {scan_flag['pending']}")
     if books_added:
         send_bot_message(f"📚 {books_added} کتاب جدید پردازش و به صف اضافه شد.")
