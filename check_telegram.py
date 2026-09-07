@@ -21,7 +21,6 @@ import config
 from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import process_book_caption, build_book_filename
 
-
 API_BASE = f"https://api.telegram.org/bot{config.BOT_TOKEN}"
 FILE_BASE = f"https://api.telegram.org/file/bot{config.BOT_TOKEN}"
 
@@ -77,7 +76,12 @@ def try_telethon_download(document: dict, dest_path: str) -> bool:
 
     try:
         with get_client() as client:
-            for msg in client.iter_messages(bot_user_id, limit=50):
+            try:
+                client.get_entity(bot_user_id)
+            except ValueError:
+                client.get_dialogs()
+
+            for msg in client.iter_messages(bot_user_id, limit=300):
                 if not msg.document:
                     continue
                 msg_name = None
@@ -118,8 +122,8 @@ def main():
         return
 
     scan_flag = load_json(config.SCAN_FLAG_FILE, {"pending": False})
+    book_queue = load_json(config.BOOK_QUEUE_FILE, [])
     post_queue = load_json(config.POST_QUEUE_FILE, [])
-    quiz_queue = load_json(config.QUIZ_QUEUE_FILE, [])
 
     max_update_id = last["update_id"]
     books_added = 0
@@ -161,8 +165,6 @@ def main():
         if not document:
             continue
 
-        # این خط مهمه: هر خطایی هم توی پردازش این یک فایل پیش بیاد، فقط همین
-        # فایل رد می‌شه - کل اجرا کرش نمی‌کنه و بقیه‌ی پیام‌ها هم پردازش می‌شن.
         try:
             caption = msg.get("caption", "")
             original_filename = document.get("file_name", "book.pdf")
@@ -199,6 +201,7 @@ def main():
     save_json(config.SCAN_FLAG_FILE, scan_flag)
     save_json(config.BOOK_QUEUE_FILE, book_queue)
     save_json(config.POST_QUEUE_FILE, post_queue)
+
     print(f"{len(updates)} پیام بررسی شد. {books_added} کتاب اضافه شد، {books_failed} کتاب شکست خورد. /scan در انتظار: {scan_flag['pending']}")
     if books_added:
         send_bot_message(f"📚 {books_added} کتاب جدید پردازش و به صف اضافه شد.")
