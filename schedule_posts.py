@@ -20,7 +20,7 @@ import pytz
 
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message
-from text_utils import clean_channel_post_text
+from text_utils import clean_channel_post_text, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
 from telethon.tl.functions.messages import GetScheduledHistoryRequest
 
 LOOKAHEAD_DAYS = 14
