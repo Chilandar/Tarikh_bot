@@ -24,6 +24,8 @@ def normalize_text_for_dedupe(text: str) -> str:
     text = text or ""
     text = re.sub(r"[\U0001F300-\U0001FAFF\u2600-\u27BF]", "", text)
     text = re.sub(r"[^\w\s]", "", text)
+    # حروف عربی/فارسی که کانال‌های مختلف قاطی استفاده می‌کنن (ي/ی، ك/ک) یکی بشن
+    text = text.replace("ي", "ی").replace("ك", "ک").replace("ة", "ه")
     text = re.sub(r"\s+", " ", text).strip().lower()
     return text
 
