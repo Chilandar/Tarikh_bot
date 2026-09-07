@@ -6,10 +6,10 @@
 محافظ‌های کیفیت:
   - تشخیص مدیا هر نوع (عکس فشرده، فیلم، عکس/فیلم به‌شکل فایل) رو می‌بینه.
   - اگه یک کانال عکس رو تنها (بدون کپشن) بفرسته و کپشنش رو توی پیام بعدی
-    جداگانه بفرسته، این دو پیام رو به‌عنوان یک پست واحد (عکس + متن) می‌بینه.
-  - قبل از اضافه‌کردن هر پست، هش متنش با پست‌های قبلاً دیده‌شده مقایسه می‌شه
-    تا محتوای تکراری (که چند کانال از هم کپی می‌کنن) دوباره اضافه نشه.
-  - صف فعلی هم یک‌بار از تکراری‌های قدیمی (قبل از فعال‌شدن این قابلیت) پاک می‌شه.
+    جداگانه بفرسته، این دو پیام رو یکی می‌بینه - و برعکسش هم: اگه کپشن اول
+    بیاد و عکس توی پیام بعدی، بازم جفتشون می‌کنه.
+  - قبل از اضافه‌کردن هر پست، هش متنش با پست‌های قبلاً دیده‌شده مقایسه می‌شه.
+  - هیچ پستی (به‌جز حکایت) بدون عکس/فیلم واقعی اضافه نمی‌شه.
 
 اجرا: python scan_history.py
 """
@@ -71,6 +71,11 @@ def dedupe_existing_queue(queue: list, seen_hashes: dict) -> list:
 
 
 class ChannelScanner:
+    """
+    پیام‌های واجدشرایط یک کانال رو یکی‌یکی برمی‌گردونه. یک "نگه‌دارنده" (held)
+    برای جفت‌کردنِ عکس/کپشنی که توی دو پیام جدا (به هر ترتیبی) اومدن داره.
+    """
+
     def __init__(self, client, channel, state, cutoff, stats, seen_hashes):
         self.channel = channel
         self.state = state
@@ -81,7 +86,8 @@ class ChannelScanner:
         self.added = 0
         self.duplicates_skipped = 0
         self.done = False
-        self.pending_photo = None
+        self._held = None      # {"kind": "photo"|"text", ...}
+        self._ready = []       # آیتم‌های آماده‌ی برگشت (ممکنه یک پیام هم‌زمان held رو flush و خودش هم آیتم بسازه)
 
         entity = resolve_source_entity(client, channel)
         self._iterator = client.iter_messages(
@@ -107,7 +113,8 @@ class ChannelScanner:
         else:
             category = detect_category(text, has_media=has_media)
 
-        if config.CATEGORY_REQUIRES_IMAGE.get(category, False) and not has_media:
+        # قانون سخت: هیچ پستی (به‌جز حکایت) بدون عکس/فیلم واقعی زمان‌بندی نمی‌شه
+        if config.CATEGORY_REQUIRES_IMAGE.get(category, True) and not has_media:
             return None
 
         avg_views = update_channel_average(self.stats, self.channel, views or 0)
@@ -125,7 +132,20 @@ class ChannelScanner:
             "used": False,
         }
 
+    def _flush_held_as_standalone(self):
+        """اگه چیزی نگه‌داشته شده بود و جفتش پیدا نشد، به‌عنوان پست مستقل امتحانش کن (اگه واجد شرایط بود)."""
+        held = self._held
+        self._held = None
+        if held and held["kind"] == "text":
+            item = self._build_item(held["message_id"], held["text"], None, held["views"], held["forwards"])
+            if item:
+                self._ready.append(item)
+        # اگه held از نوع "photo" بود و جفتش پیدا نشد، اصلاً نگهش نمی‌داریم -
+        # چون عکس بدون کپشن (به‌جز حکایت که اصلاً عکس لازم نداره) قابل‌قبول نیست
+
     def next_qualifying_item(self):
+        if self._ready:
+            return self._ready.pop(0)
         if self.done:
             return None
 
@@ -134,44 +154,71 @@ class ChannelScanner:
             self.scanned += 1
 
             if msg.date >= self.cutoff:
+                self._flush_held_as_standalone()
                 self.state["finished"] = True
                 self.done = True
-                return None
+                return self._ready.pop(0) if self._ready else None
 
             text = msg.message or ""
             media_type = detect_media_type(msg)
 
-            if media_type:
-                if config.MIN_TEXT_LEN <= len(text) <= config.MAX_TEXT_LEN:
-                    self.pending_photo = None
-                    item = self._build_item(msg.id, text, media_type, msg.views, msg.forwards)
-                    if item:
-                        return item
-                    continue
-                if len(text) <= BARE_MEDIA_TEXT_LIMIT:
-                    self.pending_photo = {"message_id": msg.id, "media_type": media_type, "date": msg.date}
-                    continue
-                self.pending_photo = None
+            has_full = media_type and (config.MIN_TEXT_LEN <= len(text) <= config.MAX_TEXT_LEN)
+            is_bare_photo = media_type and len(text) <= BARE_MEDIA_TEXT_LIMIT
+            is_bare_text = (not media_type) and (config.MIN_TEXT_LEN <= len(text) <= config.MAX_TEXT_LEN)
+
+            within_window = (
+                self._held is not None
+                and (msg.date - self._held["date"]).total_seconds() <= PAIRING_MAX_SECONDS
+            )
+
+            if has_full:
+                self._flush_held_as_standalone()
+                item = self._build_item(msg.id, text, media_type, msg.views, msg.forwards)
+                if item:
+                    self._ready.append(item)
+                if self._ready:
+                    return self._ready.pop(0)
                 continue
 
-            if self.pending_photo and (msg.date - self.pending_photo["date"]).total_seconds() <= PAIRING_MAX_SECONDS:
-                pending = self.pending_photo
-                self.pending_photo = None
-                if config.MIN_TEXT_LEN <= len(text) <= config.MAX_TEXT_LEN:
+            if is_bare_photo:
+                if self._held and self._held["kind"] == "text" and within_window:
+                    # حالت: کپشن اول اومده بود، حالا عکسش رسید (کپشن قبل از عکس)
+                    pending = self._held
+                    self._held = None
+                    item = self._build_item(msg.id, pending["text"], media_type, msg.views, msg.forwards)
+                    if item:
+                        self._ready.append(item)
+                    if self._ready:
+                        return self._ready.pop(0)
+                    continue
+                self._flush_held_as_standalone()
+                self._held = {"kind": "photo", "message_id": msg.id, "media_type": media_type, "date": msg.date}
+                continue
+
+            if is_bare_text:
+                if self._held and self._held["kind"] == "photo" and within_window:
+                    # حالت: عکس اول اومده بود، حالا کپشنش رسید (عکس قبل از کپشن)
+                    pending = self._held
+                    self._held = None
                     item = self._build_item(pending["message_id"], text, pending["media_type"], msg.views, msg.forwards)
                     if item:
-                        return item
+                        self._ready.append(item)
+                    if self._ready:
+                        return self._ready.pop(0)
+                    continue
+                self._flush_held_as_standalone()
+                self._held = {
+                    "kind": "text", "text": text, "message_id": msg.id, "date": msg.date,
+                    "views": msg.views, "forwards": msg.forwards,
+                }
                 continue
 
-            self.pending_photo = None
-            if not (config.MIN_TEXT_LEN <= len(text) <= config.MAX_TEXT_LEN):
-                continue
-            item = self._build_item(msg.id, text, None, msg.views, msg.forwards)
-            if item:
-                return item
+            # نه کامل، نه عکس‌تنها، نه متنِ‌تنهای واجدشرایط - رد می‌شه
+            self._flush_held_as_standalone()
 
+        self._flush_held_as_standalone()
         self.done = True
-        return None
+        return self._ready.pop(0) if self._ready else None
 
 
 def main():
@@ -218,7 +265,7 @@ def main():
                     queue.append(item)
                     added_count += 1
                     remaining_budget -= 1
-                if not scanner.done:
+                if not scanner.done or scanner._ready:
                     still_active.append(scanner)
             scanners = still_active
 
