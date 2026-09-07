@@ -96,6 +96,9 @@ def has_media(item: dict) -> bool:
 def send_post(client, entity, item: dict, schedule_dt: datetime.datetime):
     final_text = clean_channel_post_text(item["text"])
 
+    if get_visible_content_length(item["text"]) < MIN_VISIBLE_CONTENT_LEN:
+        return None  # محافظ نهایی: اگه عملاً محتوایی نمونده، پست نمی‌شه
+
     if has_media(item):
         source_msg = client.get_messages(item["channel"], ids=item["message_id"])
         if not source_msg or not source_msg.media:
