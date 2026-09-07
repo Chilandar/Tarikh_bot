@@ -105,6 +105,9 @@ class ChannelScanner:
 
         has_media = media_type is not None
 
+        if get_visible_content_length(text) < MIN_VISIBLE_CONTENT_LEN:
+            return None  # بعد از حذف امضا/آیدی، عملاً چیزی برای گفتن نمونده
+          
         ai_result = classify_with_gemini(config.GEMINI_API_KEY, text, has_media) if config.GEMINI_API_KEY else None
         if ai_result:
             if not ai_result["is_good"]:
