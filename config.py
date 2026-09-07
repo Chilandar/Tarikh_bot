@@ -116,10 +116,10 @@ SEEN_TEXT_HASHES_FILE = os.path.join(os.path.dirname(__file__), "state", "seen_t
 
 # آیا این دسته حتماً باید عکس داشته باشه؟
 CATEGORY_REQUIRES_IMAGE = {
-    CATEGORY_SOKHAN_BOZORGAN: False,
+    CATEGORY_SOKHAN_BOZORGAN: True,
     CATEGORY_AKS_IRAN_QADIM: True,
-    CATEGORY_HEKAYAT: False,
-    CATEGORY_GENERAL: False,
+    CATEGORY_HEKAYAT: False,   # فقط حکایت می‌تونه بدون عکس باشه
+    CATEGORY_GENERAL: True,
 }
 
 # دسته‌هایی که برای اسلات‌های اختصاصی (۱۶ و ۱۹) رزرو شدن و اسلات‌های عمومی (۱۰، ۱۳) بهشون دست نمی‌زنن
