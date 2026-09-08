@@ -9,9 +9,8 @@ book_excerpts.get_book_pages() قبلاً برای گلچین‌گیری ساخ�
 
 import json
 import random
-import requests
 
-from ai_classify import GEMINI_URL
+from ai_providers import ask_ai, strip_json_fence
 
 QUESTION_PROMPT = """این متنِ صفحه‌ی {page_num} از کتاب «{book_title}» است:
 
@@ -41,25 +40,18 @@ def _truncate(s, limit):
     return s if len(s) <= limit else s[: limit - 1].rstrip() + "…"
 
 
-def extract_question_from_page(api_key: str, page_num: int, page_text: str, book_title: str):
-    if not api_key or not page_text:
+def extract_question_from_page(page_num: int, page_text: str, book_title: str):
+    if not page_text:
         return None
 
     prompt = QUESTION_PROMPT.format(page_num=page_num, book_title=book_title, page_text=page_text)
 
+    raw = ask_ai(prompt, timeout=30)
+    if raw is None:
+        return None
+
     try:
-        resp = requests.post(
-            GEMINI_URL,
-            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-            json={"contents": [{"parts": [{"text": prompt}]}]},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        raw = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-        if raw.startswith("```"):
-            raw = raw.strip("`").replace("json", "", 1).strip()
-        result = json.loads(raw)
+        result = json.loads(strip_json_fence(raw))
     except Exception as e:
         print(f"⚠️ ساخت سوال از صفحه {page_num} شکست خورد: {e}")
         return None
@@ -93,17 +85,18 @@ def extract_question_from_page(api_key: str, page_num: int, page_text: str, book
     }
 
 
-def generate_quiz_items(api_key: str, pages, book_title: str):
+def generate_quiz_items(pages, book_title: str):
     """
     pages: [(شماره_صفحه, متن), ...] - همون خروجی book_excerpts.get_book_pages
     """
-    if not api_key:
-        print("GEMINI_API_KEY تنظیم نشده - ساخت کوییز از کتاب رد شد.")
+    import config
+    if not config.AI_PROVIDER_CHAIN:
+        print("هیچ کلید هوش مصنوعی‌ای تنظیم نشده - ساخت کوییز از کتاب رد شد.")
         return []
 
     items = []
     for page_num, page_text in pages:
-        item = extract_question_from_page(api_key, page_num, page_text, book_title)
+        item = extract_question_from_page(page_num, page_text, book_title)
         if item:
             items.append(item)
 
