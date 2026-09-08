@@ -11,6 +11,11 @@
   - قبل از اضافه‌کردن هر پست، هش متنش با پست‌های قبلاً دیده‌شده مقایسه می‌شه.
   - هیچ پستی (به‌جز حکایت) بدون عکس/فیلم واقعی اضافه نمی‌شه.
 
+درباره‌ی دسته‌بندی با Gemini: به‌جای یک درخواست به‌ازای هر پست، پست‌های
+واجدشرایط (بعد از رد تکراری‌ها و پست‌های خیلی کوتاه) توی یک بافر جمع می‌شن و
+هر ai_classify.BATCH_SIZE تا، با هم در یک درخواست به Gemini فرستاده می‌شن -
+هم سریع‌تره هم به سقف رایگان نمی‌خوریم.
+
 اجرا: python scan_history.py
 """
 
@@ -18,7 +23,7 @@ import datetime
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message, resolve_source_entity
 from text_utils import detect_category, text_hash_for_dedupe, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
-from ai_classify import classify_with_gemini
+from ai_classify import classify_batch_with_gemini, BATCH_SIZE
 
 import pytz
 
@@ -70,24 +75,58 @@ def dedupe_existing_queue(queue: list, seen_hashes: dict) -> list:
     return deduped
 
 
+def finalize_candidate(candidate: dict, ai_result: dict, stats: dict):
+    """
+    یک کاندید (که از پیش دسته‌بندی نشده) رو با نتیجه‌ی Gemini (یا فال‌بک
+    کلیدواژه‌ای) نهایی می‌کنه. اگه رد بشه، None برمی‌گردونه.
+    """
+    text = candidate["text"]
+    media_type = candidate["media_type"]
+    has_media = media_type is not None
+
+    if ai_result:
+        if not ai_result["is_good"]:
+            return None
+        category = ai_result["category"]
+    else:
+        category = detect_category(text, has_media=has_media)
+
+    # قانون سخت: هیچ پستی (به‌جز حکایت) بدون عکس/فیلم واقعی زمان‌بندی نمی‌شه
+    if config.CATEGORY_REQUIRES_IMAGE.get(category, True) and not has_media:
+        return None
+
+    avg_views = update_channel_average(stats, candidate["channel"], candidate["views"] or 0)
+    score = score_message(text, candidate["views"] or 0, candidate["forwards"] or 0, avg_views)
+
+    return {
+        "channel": candidate["channel"],
+        "message_id": candidate["message_id"],
+        "text": text,
+        "media_type": media_type,
+        "category": category,
+        "score": round(score, 3),
+        "used": False,
+    }
+
+
 class ChannelScanner:
     """
-    پیام‌های واجدشرایط یک کانال رو یکی‌یکی برمی‌گردونه. یک "نگه‌دارنده" (held)
-    برای جفت‌کردنِ عکس/کپشنی که توی دو پیام جدا (به هر ترتیبی) اومدن داره.
+    کاندیدهای واجدشرایط یک کانال رو یکی‌یکی برمی‌گردونه (هنوز دسته‌بندی
+    نشدن - این کار دسته‌ای و بیرون از این کلاس انجام می‌شه). یک "نگه‌دارنده"
+    (held) برای جفت‌کردنِ عکس/کپشنی که توی دو پیام جدا (به هر ترتیبی) اومدن داره.
     """
 
-    def __init__(self, client, channel, state, cutoff, stats, seen_hashes):
+    def __init__(self, client, channel, state, cutoff, seen_hashes):
         self.channel = channel
         self.state = state
         self.cutoff = cutoff
-        self.stats = stats
         self.seen_hashes = seen_hashes
         self.scanned = 0
-        self.added = 0
+        self.added = 0  # بعداً از بیرون (بعد از دسته‌بندی) افزایش داده می‌شه
         self.duplicates_skipped = 0
         self.done = False
         self._held = None      # {"kind": "photo"|"text", ...}
-        self._ready = []       # آیتم‌های آماده‌ی برگشت (ممکنه یک پیام هم‌زمان held رو flush و خودش هم آیتم بسازه)
+        self._ready = []       # کاندیدهای آماده‌ی برگشت
 
         entity = resolve_source_entity(client, channel)
         self._iterator = client.iter_messages(
@@ -97,56 +136,37 @@ class ChannelScanner:
             limit=config.HISTORY_RAW_SCAN_CAP,
         )
 
-    def _build_item(self, message_id, text, media_type, views=0, forwards=0):
+    def _prepare_candidate(self, message_id, text, media_type, views=0, forwards=0):
         text_hash = text_hash_for_dedupe(text)
         if text_hash in self.seen_hashes:
             self.duplicates_skipped += 1
             return None
 
-        has_media = media_type is not None
-
         if get_visible_content_length(text) < MIN_VISIBLE_CONTENT_LEN:
             return None  # بعد از حذف امضا/آیدی، عملاً چیزی برای گفتن نمونده
-          
-        ai_result = classify_with_gemini(config.GEMINI_API_KEY, text, has_media) if config.GEMINI_API_KEY else None
-        if ai_result:
-            if not ai_result["is_good"]:
-                return None
-            category = ai_result["category"]
-        else:
-            category = detect_category(text, has_media=has_media)
-
-        # قانون سخت: هیچ پستی (به‌جز حکایت) بدون عکس/فیلم واقعی زمان‌بندی نمی‌شه
-        if config.CATEGORY_REQUIRES_IMAGE.get(category, True) and not has_media:
-            return None
-
-        avg_views = update_channel_average(self.stats, self.channel, views or 0)
-        score = score_message(text, views or 0, forwards or 0, avg_views)
 
         self.seen_hashes[text_hash] = True
-        self.added += 1
         return {
             "channel": self.channel,
             "message_id": message_id,
             "text": text,
             "media_type": media_type,
-            "category": category,
-            "score": round(score, 3),
-            "used": False,
+            "views": views,
+            "forwards": forwards,
         }
 
     def _flush_held_as_standalone(self):
-        """اگه چیزی نگه‌داشته شده بود و جفتش پیدا نشد، به‌عنوان پست مستقل امتحانش کن (اگه واجد شرایط بود)."""
+        """اگه چیزی نگه‌داشته شده بود و جفتش پیدا نشد، به‌عنوان کاندید مستقل امتحانش کن."""
         held = self._held
         self._held = None
         if held and held["kind"] == "text":
-            item = self._build_item(held["message_id"], held["text"], None, held["views"], held["forwards"])
-            if item:
-                self._ready.append(item)
+            candidate = self._prepare_candidate(held["message_id"], held["text"], None, held["views"], held["forwards"])
+            if candidate:
+                self._ready.append(candidate)
         # اگه held از نوع "photo" بود و جفتش پیدا نشد، اصلاً نگهش نمی‌داریم -
         # چون عکس بدون کپشن (به‌جز حکایت که اصلاً عکس لازم نداره) قابل‌قبول نیست
 
-    def next_qualifying_item(self):
+    def next_candidate(self):
         if self._ready:
             return self._ready.pop(0)
         if self.done:
@@ -176,21 +196,20 @@ class ChannelScanner:
 
             if has_full:
                 self._flush_held_as_standalone()
-                item = self._build_item(msg.id, text, media_type, msg.views, msg.forwards)
-                if item:
-                    self._ready.append(item)
+                candidate = self._prepare_candidate(msg.id, text, media_type, msg.views, msg.forwards)
+                if candidate:
+                    self._ready.append(candidate)
                 if self._ready:
                     return self._ready.pop(0)
                 continue
 
             if is_bare_photo:
                 if self._held and self._held["kind"] == "text" and within_window:
-                    # حالت: کپشن اول اومده بود، حالا عکسش رسید (کپشن قبل از عکس)
                     pending = self._held
                     self._held = None
-                    item = self._build_item(msg.id, pending["text"], media_type, msg.views, msg.forwards)
-                    if item:
-                        self._ready.append(item)
+                    candidate = self._prepare_candidate(msg.id, pending["text"], media_type, msg.views, msg.forwards)
+                    if candidate:
+                        self._ready.append(candidate)
                     if self._ready:
                         return self._ready.pop(0)
                     continue
@@ -200,12 +219,11 @@ class ChannelScanner:
 
             if is_bare_text:
                 if self._held and self._held["kind"] == "photo" and within_window:
-                    # حالت: عکس اول اومده بود، حالا کپشنش رسید (عکس قبل از کپشن)
                     pending = self._held
                     self._held = None
-                    item = self._build_item(pending["message_id"], text, pending["media_type"], msg.views, msg.forwards)
-                    if item:
-                        self._ready.append(item)
+                    candidate = self._prepare_candidate(pending["message_id"], text, pending["media_type"], msg.views, msg.forwards)
+                    if candidate:
+                        self._ready.append(candidate)
                     if self._ready:
                         return self._ready.pop(0)
                     continue
@@ -255,7 +273,27 @@ def main():
             if state.get("finished"):
                 continue
             progress[channel] = state
-            scanners.append(ChannelScanner(client, channel, state, cutoff, stats, seen_hashes))
+            scanners.append(ChannelScanner(client, channel, state, cutoff, seen_hashes))
+
+        pending = []  # [(scanner, candidate), ...] در انتظار دسته‌بندیِ دسته‌ای
+
+        def flush_pending():
+            nonlocal added_count
+            if not pending:
+                return
+            items = [{"text": c["text"], "has_media": c["media_type"] is not None} for _, c in pending]
+            if config.GEMINI_API_KEY:
+                ai_results = classify_batch_with_gemini(config.GEMINI_API_KEY, items)
+            else:
+                ai_results = [None] * len(pending)
+
+            for (scanner, candidate), ai_result in zip(pending, ai_results):
+                final_item = finalize_candidate(candidate, ai_result, stats)
+                if final_item:
+                    queue.append(final_item)
+                    added_count += 1
+                    scanner.added += 1
+            pending.clear()
 
         while remaining_budget > 0 and scanners:
             still_active = []
@@ -263,14 +301,17 @@ def main():
                 if remaining_budget <= 0:
                     still_active.append(scanner)
                     continue
-                item = scanner.next_qualifying_item()
-                if item is not None:
-                    queue.append(item)
-                    added_count += 1
+                candidate = scanner.next_candidate()
+                if candidate is not None:
+                    pending.append((scanner, candidate))
                     remaining_budget -= 1
+                    if len(pending) >= BATCH_SIZE:
+                        flush_pending()
                 if not scanner.done or scanner._ready:
                     still_active.append(scanner)
             scanners = still_active
+
+        flush_pending()  # هرچی از دسته‌ی آخر باقی مونده بود
 
         per_channel_report = {}
         for s in scanners:
