@@ -1,55 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-دسته‌بندی و ارزیابی کیفیت پست‌ها با Gemini (رایگان). اگه GEMINI_API_KEY تنظیم
-نباشه یا درخواست شکست بخوره، None برمی‌گرده و کد اصلی به روش کلیدواژه‌ای
-(ضعیف‌تر) برمی‌گرده.
+دسته‌بندی و ارزیابی کیفیت پست‌ها با هوش مصنوعی (Gemini/Grok - رایگان). اگه
+هیچ کلیدی تنظیم نباشه یا همه‌ی مدل‌ها شکست بخورن، None برمی‌گرده و کد اصلی
+به روش کلیدواژه‌ای (ضعیف‌تر) برمی‌گرده.
 
-برای جلوگیری از محدودیت نرخ Google، به‌جای یک درخواست به‌ازای هر پست، چند
-پست با هم در یک درخواست فرستاده می‌شن (classify_batch_with_gemini). تابع
-تکی (classify_with_gemini) هنوز هست و برای جاهای دیگه (مثل quiz_extract) کار
+تماسِ واقعی با مدل‌ها (و fallback بین چند کلید/سرویس) داخل ai_providers.py
+انجام می‌شه - این فایل فقط پرامپت‌ها و پردازش خروجی رو نگه می‌داره.
+
+برای جلوگیری از محدودیت نرخ، به‌جای یک درخواست به‌ازای هر پست، چند پست با
+هم در یک درخواست فرستاده می‌شن (classify_batch_with_ai). تابع تکی
+(classify_with_ai) هنوز هست و برای جاهای دیگه (مثل quiz_extract) کار
 می‌کنه، ولی scan_history.py از نسخه‌ی دسته‌ای استفاده می‌کنه.
 """
 
 import json
-import time
-import requests
 
-GEMINI_MODEL = "gemini-3.5-flash"
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+from ai_providers import ask_ai, strip_json_fence
 
 VALID_CATEGORIES = {"sokhan_bozorgan", "aks_iran_qadim", "hekayat_dastan_sher", "general"}
 
-BATCH_SIZE = 15  # چند پست در هر درخواست به Gemini فرستاده بشه
-
-_last_call_time = [0.0]
-MIN_SECONDS_BETWEEN_CALLS = 5.0  # حدود ۱۲ درخواست در دقیقه - زیر سقف رایگان
-
-
-def call_gemini_raw(api_key: str, prompt: str, timeout: int = 30, max_retries: int = 3):
-    """یک درخواست به Gemini، با فاصله‌ی خودکار بین تماس‌ها و تلاش مجدد در صورت ۴۲۹."""
-    for attempt in range(max_retries):
-        elapsed = time.time() - _last_call_time[0]
-        if elapsed < MIN_SECONDS_BETWEEN_CALLS:
-            time.sleep(MIN_SECONDS_BETWEEN_CALLS - elapsed)
-
-        resp = requests.post(
-            GEMINI_URL,
-            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-            json={"contents": [{"parts": [{"text": prompt}]}]},
-            timeout=timeout,
-        )
-        _last_call_time[0] = time.time()
-
-        if resp.status_code == 429:
-            wait = 20 * (attempt + 1)
-            print(f"⚠️ محدودیت نرخ Gemini (429) - {wait} ثانیه صبر می‌کنیم...")
-            time.sleep(wait)
-            continue
-
-        resp.raise_for_status()
-        return resp.json()
-
-    raise RuntimeError("Gemini API: بعد از چند تلاش هنوز ۴۲۹ می‌ده")
+BATCH_SIZE = 15  # چند پست در هر درخواست فرستاده بشه
 
 
 CATEGORY_RULES = """تو دستیار دسته‌بندی محتوا برای یک کانال تلگرامی تاریخی/فرهنگی به اسم
@@ -146,37 +116,32 @@ def _parse_result(parsed) -> dict | None:
     return {"category": category, "is_good": bool(is_good)}
 
 
-def classify_with_gemini(api_key: str, text: str, has_media: bool):
-    """دسته‌بندی یک پست تکی - یک درخواست کامل به Gemini."""
-    if not api_key:
-        return None
-
+def classify_with_ai(text: str, has_media: bool):
+    """دسته‌بندی یک پست تکی - یک درخواست کامل به زنجیره‌ی مدل‌ها."""
     media_desc = "عکس یا فیلم دارد" if has_media else "عکس یا فیلم ندارد"
     prompt = PROMPT_TEMPLATE.format(media_desc=media_desc, text=text)
 
-    try:
-        data = call_gemini_raw(api_key, prompt, timeout=20)
-        raw_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-        if raw_text.startswith("```"):
-            raw_text = raw_text.strip("`")
-            raw_text = raw_text.replace("json", "", 1).strip()
+    raw_text = ask_ai(prompt, timeout=20)
+    if raw_text is None:
+        return None
 
-        parsed = json.loads(raw_text)
+    try:
+        parsed = json.loads(strip_json_fence(raw_text))
         return _parse_result(parsed)
     except Exception as e:
-        print(f"⚠️ دسته‌بندی با Gemini شکست خورد: {e} - به روش کلیدواژه‌ای برمی‌گردیم.")
+        print(f"⚠️ دسته‌بندی با هوش مصنوعی شکست خورد: {e} - به روش کلیدواژه‌ای برمی‌گردیم.")
         return None
 
 
-def classify_batch_with_gemini(api_key: str, items: list):
+def classify_batch_with_ai(items: list):
     """
     items: [{"text": ..., "has_media": bool}, ...] (حداکثر BATCH_SIZE تا)
     خروجی: لیستی هم‌طول با items، هرکدوم یا {"category":..., "is_good":...}
     یا None (اگه پارس یه عضو خاص شکست بخوره یا کل درخواست شکست بخوره).
     یک درخواست برای کل دسته - نه یکی به‌ازای هر پست.
     """
-    if not api_key or not items:
-        return [None] * len(items)
+    if not items:
+        return []
 
     lines = []
     for i, it in enumerate(items, start=1):
@@ -186,14 +151,12 @@ def classify_batch_with_gemini(api_key: str, items: list):
 
     prompt = BATCH_PROMPT_TEMPLATE.format(n=len(items), items_block=items_block)
 
-    try:
-        data = call_gemini_raw(api_key, prompt, timeout=60)
-        raw_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-        if raw_text.startswith("```"):
-            raw_text = raw_text.strip("`")
-            raw_text = raw_text.replace("json", "", 1).strip()
+    raw_text = ask_ai(prompt, timeout=60)
+    if raw_text is None:
+        return [None] * len(items)
 
-        parsed_list = json.loads(raw_text)
+    try:
+        parsed_list = json.loads(strip_json_fence(raw_text))
         if not isinstance(parsed_list, list):
             raise ValueError("خروجی مدل آرایه نبود")
 
@@ -205,5 +168,5 @@ def classify_batch_with_gemini(api_key: str, items: list):
                 results.append(None)
         return results
     except Exception as e:
-        print(f"⚠️ دسته‌بندیِ دسته‌ای با Gemini شکست خورد: {e} - همه‌ی این دسته به روش کلیدواژه‌ای می‌رن.")
+        print(f"⚠️ دسته‌بندیِ دسته‌ای با هوش مصنوعی شکست خورد: {e} - همه‌ی این دسته به روش کلیدواژه‌ای می‌رن.")
         return [None] * len(items)
