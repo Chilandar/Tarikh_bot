@@ -14,6 +14,26 @@ API_HASH = os.environ.get("TG_API_HASH", "")
 SESSION_STRING = os.environ.get("TG_SESSION_STRING", "")  # با get_session.py ساخته می‌شه
 BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")  # از BotFather
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_API_KEY_2 = os.environ.get("GEMINI_API_KEY_2", "")   # کلید دوم گوگل (مثلاً اکانت دوستت)
+GROK_API_KEY = os.environ.get("GROK_API_KEY", "")
+GROK_API_KEY_2 = os.environ.get("GROK_API_KEY_2", "")       # کلید دوم Grok (مثلاً اکانت دوستت)
+
+# ---------------------------------------------------------------------------
+# ترتیب اولویتِ استفاده از مدل‌های هوش مصنوعی
+# ---------------------------------------------------------------------------
+# هر درخواست اول با اولین موردِ این لیست امتحان می‌شه؛ اگه شکست خورد
+# (خطا، محدودیت نرخ، تایم‌اوت و ...) خودکار می‌ره سراغ بعدی. کلیدهایی که
+# خالی باشن (تنظیم نشده باشن) خودشون از لیست حذف می‌شن.
+# برای تغییر ترتیب یا اضافه‌کردن/برداشتن یک کلید، فقط همین لیست رو ویرایش کن.
+AI_PROVIDER_CHAIN = [
+    (provider, key) for provider, key in [
+        ("gemini", GEMINI_API_KEY),
+        ("gemini", GEMINI_API_KEY_2),
+        ("grok", GROK_API_KEY),
+        ("grok", GROK_API_KEY_2),
+    ]
+    if key
+]
 
 # آیدی عددی کانال خودت (نه یوزرنیم) - عدد منفی بزرگ، با get_session.py قابل پیدا کردنه
 TARGET_CHANNEL = os.environ.get("TG_TARGET_CHANNEL", "@Tarikhgan")
