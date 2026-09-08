@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 استخراج گلچین از کتاب‌ها: هر صفحه رو می‌خونه (اگه متن قابل‌کپی داشت مستقیم،
-وگرنه با OCR رایگان فارسی/Tesseract)، بعد از Gemini می‌خواد جمله/پاراگراف‌های
-جالب رو استخراج کنه. تعداد پست‌های خروجی ثابت نیست - هرچی Gemini پیدا کرد.
+وگرنه با OCR رایگان فارسی/Tesseract)، بعد از هوش مصنوعی می‌خواد جمله/پاراگراف‌های
+جالب رو استخراج کنه. تعداد پست‌های خروجی ثابت نیست - هرچی پیدا کرد.
 
 نکته‌ی امنیتی/حق‌نشر: این ماژول فقط چند جمله‌ی کوتاه از هر صفحه استخراج
 می‌کنه (نه کل صفحه یا کل کتاب) و خودِ فایل کتاب هرگز وارد ریپو نمی‌شه.
@@ -10,10 +10,9 @@
 
 import html
 import json
-import requests
 
 import config
-from ai_classify import GEMINI_URL
+from ai_providers import ask_ai, strip_json_fence
 
 try:
     import PyPDF2
@@ -75,8 +74,8 @@ def get_book_pages(pdf_path: str, max_pages: int = None):
     return pages
 
 
-def extract_excerpts_from_page(api_key: str, page_num: int, page_text: str, book_title: str):
-    if not api_key or not page_text:
+def extract_excerpts_from_page(page_num: int, page_text: str, book_title: str):
+    if not page_text:
         return []
 
     prompt = f"""این متنِ صفحه‌ی {page_num} از کتاب «{book_title}» است:
@@ -92,19 +91,12 @@ def extract_excerpts_from_page(api_key: str, page_num: int, page_text: str, book
 برگردون: {{"excerpts": ["نقل قول اول (اگه بود)", "نقل قول دوم (اگه بود)"]}}
 اگه هیچی مناسب نبود: {{"excerpts": []}}"""
 
+    raw = ask_ai(prompt, timeout=30)
+    if raw is None:
+        return []
+
     try:
-        resp = requests.post(
-            GEMINI_URL,
-            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-            json={"contents": [{"parts": [{"text": prompt}]}]},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        raw = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-        if raw.startswith("```"):
-            raw = raw.strip("`").replace("json", "", 1).strip()
-        parsed = json.loads(raw)
+        parsed = json.loads(strip_json_fence(raw))
         return parsed.get("excerpts", [])
     except Exception as e:
         print(f"⚠️ استخراج گلچین از صفحه {page_num} شکست خورد: {e}")
@@ -125,7 +117,7 @@ def build_excerpt_caption(quote: str, book_meta: dict, page_num: int) -> str:
     return f"{bold}\n\n{config.SIGNATURE}"
 
 
-def generate_excerpt_items(api_key: str, pdf_path: str, book_meta: dict, pages=None):
+def generate_excerpt_items(pdf_path: str, book_meta: dict, pages=None):
     """
     کل فرآیند: صفحات کتاب رو می‌خونه، از هرکدوم گلچین می‌گیره، و لیست
     آیتم‌های آماده برای اضافه‌شدن به صف پست رو برمی‌گردونه. تعداد خروجی
@@ -134,8 +126,8 @@ def generate_excerpt_items(api_key: str, pdf_path: str, book_meta: dict, pages=N
     اگه `pages` از بیرون داده بشه (مثلاً چون همون صفحات برای ساخت کوییز هم
     لازمه)، دوباره OCR/خوندن PDF انجام نمی‌شه.
     """
-    if not api_key:
-        print("GEMINI_API_KEY تنظیم نشده - استخراج گلچین از کتاب رد شد.")
+    if not config.AI_PROVIDER_CHAIN:
+        print("هیچ کلید هوش مصنوعی‌ای تنظیم نشده - استخراج گلچین از کتاب رد شد.")
         return []
 
     if pages is None:
@@ -143,7 +135,7 @@ def generate_excerpt_items(api_key: str, pdf_path: str, book_meta: dict, pages=N
     items = []
 
     for page_num, page_text in pages:
-        excerpts = extract_excerpts_from_page(api_key, page_num, page_text, book_meta.get("book_title", ""))
+        excerpts = extract_excerpts_from_page(page_num, page_text, book_meta.get("book_title", ""))
         for quote in excerpts:
             if not quote or not quote.strip():
                 continue
@@ -158,4 +150,3 @@ def generate_excerpt_items(api_key: str, pdf_path: str, book_meta: dict, pages=N
 
     print(f"📖 از {len(pages)} صفحه‌ی بررسی‌شده، {len(items)} گلچین استخراج شد.")
     return items
-          
