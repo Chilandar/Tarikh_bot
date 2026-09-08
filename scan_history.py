@@ -11,10 +11,10 @@
   - قبل از اضافه‌کردن هر پست، هش متنش با پست‌های قبلاً دیده‌شده مقایسه می‌شه.
   - هیچ پستی (به‌جز حکایت) بدون عکس/فیلم واقعی اضافه نمی‌شه.
 
-درباره‌ی دسته‌بندی با Gemini: به‌جای یک درخواست به‌ازای هر پست، پست‌های
+درباره‌ی دسته‌بندی با هوش مصنوعی: به‌جای یک درخواست به‌ازای هر پست، پست‌های
 واجدشرایط (بعد از رد تکراری‌ها و پست‌های خیلی کوتاه) توی یک بافر جمع می‌شن و
-هر ai_classify.BATCH_SIZE تا، با هم در یک درخواست به Gemini فرستاده می‌شن -
-هم سریع‌تره هم به سقف رایگان نمی‌خوریم.
+هر ai_classify.BATCH_SIZE تا، با هم در یک درخواست فرستاده می‌شن - هم
+سریع‌تره هم به سقف رایگان نمی‌خوریم.
 
 اجرا: python scan_history.py
 """
@@ -24,6 +24,7 @@ import config
 from telegram_client import get_client, load_json, save_json, send_bot_message, resolve_source_entity
 from text_utils import detect_category, text_hash_for_dedupe, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
 from ai_classify import classify_batch_with_ai, BATCH_SIZE
+
 import pytz
 
 PAIRING_MAX_SECONDS = 300
@@ -76,7 +77,7 @@ def dedupe_existing_queue(queue: list, seen_hashes: dict) -> list:
 
 def finalize_candidate(candidate: dict, ai_result: dict, stats: dict):
     """
-    یک کاندید (که از پیش دسته‌بندی نشده) رو با نتیجه‌ی Gemini (یا فال‌بک
+    یک کاندید (که از پیش دسته‌بندی نشده) رو با نتیجه‌ی هوش مصنوعی (یا فال‌بک
     کلیدواژه‌ای) نهایی می‌کنه. اگه رد بشه، None برمی‌گردونه.
     """
     text = candidate["text"]
@@ -281,7 +282,7 @@ def main():
             if not pending:
                 return
             items = [{"text": c["text"], "has_media": c["media_type"] is not None} for _, c in pending]
-                        if config.AI_PROVIDER_CHAIN:
+            if config.AI_PROVIDER_CHAIN:
                 ai_results = classify_batch_with_ai(items)
             else:
                 ai_results = [None] * len(pending)
