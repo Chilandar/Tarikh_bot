@@ -23,8 +23,7 @@ import datetime
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message, resolve_source_entity
 from text_utils import detect_category, text_hash_for_dedupe, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
-from ai_classify import classify_batch_with_gemini, BATCH_SIZE
-
+from ai_classify import classify_batch_with_ai, BATCH_SIZE
 import pytz
 
 PAIRING_MAX_SECONDS = 300
@@ -282,8 +281,8 @@ def main():
             if not pending:
                 return
             items = [{"text": c["text"], "has_media": c["media_type"] is not None} for _, c in pending]
-            if config.GEMINI_API_KEY:
-                ai_results = classify_batch_with_gemini(config.GEMINI_API_KEY, items)
+                        if config.AI_PROVIDER_CHAIN:
+                ai_results = classify_batch_with_ai(items)
             else:
                 ai_results = [None] * len(pending)
 
