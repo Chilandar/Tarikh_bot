@@ -3,6 +3,11 @@
 دسته‌بندی و ارزیابی کیفیت پست‌ها با Gemini (رایگان). اگه GEMINI_API_KEY تنظیم
 نباشه یا درخواست شکست بخوره، None برمی‌گرده و کد اصلی به روش کلیدواژه‌ای
 (ضعیف‌تر) برمی‌گرده.
+
+برای جلوگیری از محدودیت نرخ Google، به‌جای یک درخواست به‌ازای هر پست، چند
+پست با هم در یک درخواست فرستاده می‌شن (classify_batch_with_gemini). تابع
+تکی (classify_with_gemini) هنوز هست و برای جاهای دیگه (مثل quiz_extract) کار
+می‌کنه، ولی scan_history.py از نسخه‌ی دسته‌ای استفاده می‌کنه.
 """
 
 import json
@@ -13,6 +18,8 @@ GEMINI_MODEL = "gemini-3.5-flash"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 VALID_CATEGORIES = {"sokhan_bozorgan", "aks_iran_qadim", "hekayat_dastan_sher", "general"}
+
+BATCH_SIZE = 15  # چند پست در هر درخواست به Gemini فرستاده بشه
 
 _last_call_time = [0.0]
 MIN_SECONDS_BETWEEN_CALLS = 5.0  # حدود ۱۲ درخواست در دقیقه - زیر سقف رایگان
@@ -45,10 +52,10 @@ def call_gemini_raw(api_key: str, prompt: str, timeout: int = 30, max_retries: i
     raise RuntimeError("Gemini API: بعد از چند تلاش هنوز ۴۲۹ می‌ده")
 
 
-PROMPT_TEMPLATE = """تو دستیار دسته‌بندی محتوا برای یک کانال تلگرامی تاریخی/فرهنگی به اسم
+CATEGORY_RULES = """تو دستیار دسته‌بندی محتوا برای یک کانال تلگرامی تاریخی/فرهنگی به اسم
 «تاریخگان» هستی. این کانال پست‌هایی درباره‌ی تاریخ، فرهنگ، ادبیات و تصاویر
-قدیمی منتشر می‌کنه. باید متن زیر رو بر اساس تعریف‌های دقیقی که میدم بررسی
-کنی و دو تصمیم بگیری: این پست به کدوم دسته تعلق داره، و آیا اصلاً ارزش
+قدیمی منتشر می‌کنه. باید هر متنی که میدم رو بر اساس تعریف‌های دقیقی که میدم
+بررسی کنی و دو تصمیم بگیری: این پست به کدوم دسته تعلق داره، و آیا اصلاً ارزش
 بازنشر داره یا نه.
 
 === دسته‌ها (دقیقاً به همین ترتیب اولویت بررسی کن) ===
@@ -98,7 +105,10 @@ PROMPT_TEMPLATE = """تو دستیار دسته‌بندی محتوا برای �
 - تکراری/کلیشه‌ای به‌نظر می‌رسه (چیزی که هزاران بار در کانال‌های مشابه دیده
   شده، بدون هیچ زاویه یا جزئیات خاص).
 در غیر این صورت، اگه محتوا معنادار، جذاب، و مرتبط با روحیه‌ی یک کانال
-تاریخی/فرهنگیه، true بذار.
+تاریخی/فرهنگیه، true بذار."""
+
+
+PROMPT_TEMPLATE = CATEGORY_RULES + """
 
 === ورودی ===
 این پست {media_desc}.
@@ -112,7 +122,32 @@ PROMPT_TEMPLATE = """تو دستیار دسته‌بندی محتوا برای �
 {{"category": "یکی از چهار مقدار: sokhan_bozorgan / aks_iran_qadim / hekayat_dastan_sher / general", "is_good": true یا false}}"""
 
 
+BATCH_PROMPT_TEMPLATE = CATEGORY_RULES + """
+
+=== ورودی ===
+در ادامه {n} پست جداگانه میاد، هرکدوم با یک شماره. برای *هرکدوم به‌طور
+مستقل* (بدون ربط‌دادن به بقیه) دسته و is_good رو طبق همون قوانین بالا تعیین
+کن.
+
+{items_block}
+
+=== خروجی ===
+فقط و فقط یک آرایه‌ی JSON خام برگردون (بدون ```json و بدون هیچ توضیح
+اضافه‌ای) - دقیقاً {n} عضو، دقیقاً به همون ترتیب شماره‌های بالا. هر عضو باید
+دقیقاً این شکل باشه:
+[{{"category": "...", "is_good": true}}, {{"category": "...", "is_good": false}}, ...]"""
+
+
+def _parse_result(parsed) -> dict | None:
+    category = parsed.get("category")
+    is_good = parsed.get("is_good", True)
+    if category not in VALID_CATEGORIES:
+        return None
+    return {"category": category, "is_good": bool(is_good)}
+
+
 def classify_with_gemini(api_key: str, text: str, has_media: bool):
+    """دسته‌بندی یک پست تکی - یک درخواست کامل به Gemini."""
     if not api_key:
         return None
 
@@ -127,13 +162,48 @@ def classify_with_gemini(api_key: str, text: str, has_media: bool):
             raw_text = raw_text.replace("json", "", 1).strip()
 
         parsed = json.loads(raw_text)
-        category = parsed.get("category")
-        is_good = parsed.get("is_good", True)
-
-        if category not in VALID_CATEGORIES:
-            return None
-
-        return {"category": category, "is_good": bool(is_good)}
+        return _parse_result(parsed)
     except Exception as e:
         print(f"⚠️ دسته‌بندی با Gemini شکست خورد: {e} - به روش کلیدواژه‌ای برمی‌گردیم.")
         return None
+
+
+def classify_batch_with_gemini(api_key: str, items: list):
+    """
+    items: [{"text": ..., "has_media": bool}, ...] (حداکثر BATCH_SIZE تا)
+    خروجی: لیستی هم‌طول با items، هرکدوم یا {"category":..., "is_good":...}
+    یا None (اگه پارس یه عضو خاص شکست بخوره یا کل درخواست شکست بخوره).
+    یک درخواست برای کل دسته - نه یکی به‌ازای هر پست.
+    """
+    if not api_key or not items:
+        return [None] * len(items)
+
+    lines = []
+    for i, it in enumerate(items, start=1):
+        media_desc = "عکس یا فیلم دارد" if it["has_media"] else "عکس یا فیلم ندارد"
+        lines.append(f'{i}. [{media_desc}]\n"""{it["text"]}"""')
+    items_block = "\n\n".join(lines)
+
+    prompt = BATCH_PROMPT_TEMPLATE.format(n=len(items), items_block=items_block)
+
+    try:
+        data = call_gemini_raw(api_key, prompt, timeout=60)
+        raw_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        if raw_text.startswith("```"):
+            raw_text = raw_text.strip("`")
+            raw_text = raw_text.replace("json", "", 1).strip()
+
+        parsed_list = json.loads(raw_text)
+        if not isinstance(parsed_list, list):
+            raise ValueError("خروجی مدل آرایه نبود")
+
+        results = []
+        for i in range(len(items)):
+            if i < len(parsed_list) and isinstance(parsed_list[i], dict):
+                results.append(_parse_result(parsed_list[i]))
+            else:
+                results.append(None)
+        return results
+    except Exception as e:
+        print(f"⚠️ دسته‌بندیِ دسته‌ای با Gemini شکست خورد: {e} - همه‌ی این دسته به روش کلیدواژه‌ای می‌رن.")
+        return [None] * len(items)
