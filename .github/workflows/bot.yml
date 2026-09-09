@@ -61,6 +61,10 @@ jobs:
           TG_API_HASH: ${{ secrets.TG_API_HASH }}
           TG_SESSION_STRING: ${{ secrets.TG_SESSION_STRING }}
           TG_TARGET_CHANNEL: ${{ secrets.TG_TARGET_CHANNEL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
+          GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+          GROK_API_KEY_2: ${{ secrets.GROK_API_KEY_2 }}
         run: python schedule_posts.py
 
       - name: Commit updated state
