@@ -15,7 +15,7 @@
     "media_type": "photo",
     "category": "general",
     "score": 489.116,
-    "used": false
+    "used": true
   },
   {
     "channel": "Anjomane_bozorgan",
@@ -60,7 +60,7 @@
     "media_type": null,
     "category": "hekayat_dastan_sher",
     "score": 422.584,
-    "used": false
+    "used": true
   },
   {
     "channel": "ancientir",
