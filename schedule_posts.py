@@ -160,8 +160,10 @@ def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, 
             )
             if msg_id:
                 counters["posts"] += 1
-            elif item is None:
-                print(f"⚠️ پست دسته {category} پیدا/ارسال نشد.")
+            else:
+                print(f"⚠️ ساعت {hour} روز {day}: پستی از دسته‌ی {category} توی صف پیدا/ارسال نشد.")
+        else:
+            print(f"ℹ️ ساعت {hour} روز {day}: از قبل پر بود ({already} پیام)، رد شد.")
 
     elif hour == 19:
         if already == 0:
@@ -173,22 +175,22 @@ def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, 
             if msg_id:
                 counters["posts"] += 1
                 filled_here += 1
-            elif item is None:
-                print("⚠️ پست حکایت پیدا/ارسال نشد.")
+            else:
+                print(f"⚠️ ساعت {hour} روز {day}: پست حکایتی توی صف پیدا/ارسال نشد.")
         remaining = need - filled_here
         for j in range(max(remaining, 0)):
             idx = already + filled_here + j
             b_dt = slot_dt + datetime.timedelta(minutes=2 * idx)
-            for _ in range(3):
-                book_item = pop_next_book(book_queue)
-                if not book_item:
-                    break
-                msg_id = send_book(client, entity, book_item, b_dt)
-                if msg_id:
-                    counters["books"] += 1
-                    break
+            book_item = pop_next_book(book_queue)
+            if not book_item:
+                print(f"⚠️ ساعت {hour} روز {day}: کتابی توی صف نبود.")
+                break
+            msg_id = send_book(client, entity, book_item, b_dt)
+            if msg_id:
+                counters["books"] += 1
+            else:
                 book_item["used"] = False
-                break  # کتاب معمولاً یه مشکل دائمی داره (فایل خراب)، بی‌خودی حلقه نمی‌زنیم
+                print(f"⚠️ ساعت {hour} روز {day}: ارسال کتاب شکست خورد.")
 
     else:  # اسلات‌های عمومی (۱۰، ۱۳)
         for j in range(need):
@@ -202,7 +204,10 @@ def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, 
             if msg_id:
                 counters["posts"] += 1
             elif item is None:
-                break  # دیگه چیزی توی صف عمومی نمونده
+                print(f"⚠️ ساعت {hour} روز {day}: هیچ پستِ عمومی‌ای توی صف نبود.")
+                break
+            else:
+                print(f"⚠️ ساعت {hour} روز {day}: یک پست عمومی پیدا شد ولی ارسالش شکست خورد.")
 
 
 def main():
