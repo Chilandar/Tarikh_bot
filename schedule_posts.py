@@ -7,7 +7,8 @@
 
 قوانین ظرفیت هر ساعت (به‌وقت تهران):
   ۱۰:۰۰ و ۱۳:۰۰  -> ظرفیت ۱ (عمومی)
-  ۱۶:۰۰          -> ظرفیت ۱ (سخن بزرگان/تصاویر قدیم، یکی‌درمیون)
+  ۱۶:۰۰          -> ظرفیت ۱ (سخن بزرگان/تصاویر قدیم، یکی‌درمیون) + QUIZZES_PER_16_SLOT کوییز
+                    (کوییزها از رویدادهای واقعیِ «امروز در تاریخ» ویکی‌پدیا ساخته می‌شن - quiz_web.py)
   ۱۹:۰۰          -> ظرفیت ۱ + BOOKS_PER_SLOT (حکایت + کتاب)
   ۲۲:۰۰          -> دست‌نخورده، کاملاً متعلق به خود کاربره
 
@@ -16,12 +17,15 @@
 
 import datetime
 import os
+import random
 import pytz
 
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import clean_channel_post_text, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
-from telethon.tl.functions.messages import GetScheduledHistoryRequest
+import quiz_web
+from telethon.tl.functions.messages import GetScheduledHistoryRequest, SendMediaRequest
+from telethon.tl.types import InputMediaPoll, Poll, PollAnswer
 
 LOOKAHEAD_DAYS = 14
 ALTERNATOR_FILE = config.STATE_DIR + "/alternator.json"
@@ -32,9 +36,11 @@ def tz_now():
 
 
 def hour_capacity(hour: int) -> int:
+    if hour == 16:
+        return 1 + config.QUIZZES_PER_16_SLOT
     if hour == 19:
         return 1 + config.BOOKS_PER_SLOT
-    return 1  # اسلات‌های عمومی و ۱۶ (۱۰، ۱۳، ۱۶)
+    return 1  # اسلات‌های عمومی (۱۰، ۱۳)
 
 
 def get_live_hour_counts(client, entity):
@@ -128,6 +134,38 @@ def send_book(client, entity, book_item: dict, schedule_dt: datetime.datetime):
     return sent.id
 
 
+def send_quiz_poll(client, entity, quiz: dict, schedule_dt: datetime.datetime):
+    """
+    یک Poll تعاملی از نوع quiz می‌سازه؛ با همون حساب کاربری‌ای که ربات بهش
+    وصله (نه Bot API). فقط «ترتیب تصادفی گزینه‌ها» (که قبل از این تابع انجام
+    شده) و «تنظیم پاسخ درست» (quiz=True) فعاله - چندجوابی و نمایش عمومی
+    رأی‌دهنده‌ها خاموشه. توضیحاتِ کوییز همیشه دقیقاً امضای کاناله.
+    """
+    answers = [
+        PollAnswer(text=opt, option=bytes([i]))
+        for i, opt in enumerate(quiz["options"])
+    ]
+    poll = Poll(
+        id=random.randint(1, 2**31 - 1),
+        question=quiz["question"],
+        answers=answers,
+        quiz=True,
+        multiple_choice=False,
+        public_voters=False,
+    )
+    media = InputMediaPoll(
+        poll=poll,
+        correct_answers=[bytes([quiz["correct_index"]])],
+        solution=config.SIGNATURE,
+        solution_entities=[],
+    )
+    result = client(SendMediaRequest(peer=entity, media=media, message="", schedule_date=schedule_dt))
+    for upd in result.updates:
+        if hasattr(upd, "message") and hasattr(upd.message, "id"):
+            return upd.message.id
+    return None
+
+
 def try_send_with_retries(pop_func, send_func, client, entity, slot_dt, max_attempts=3):
     """
     یک آیتم رو از صف برمی‌داره و ارسالش می‌کنه؛ اگه ارسال شکست خورد، آیتم
@@ -151,6 +189,7 @@ def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, 
     filled_here = 0
 
     if hour == 16:
+        filled_here = 0
         if already == 0:
             category = get_16_category(alternator)
             item, msg_id = try_send_with_retries(
@@ -160,10 +199,25 @@ def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, 
             )
             if msg_id:
                 counters["posts"] += 1
+                filled_here += 1
             else:
                 print(f"⚠️ ساعت {hour} روز {day}: پستی از دسته‌ی {category} توی صف پیدا/ارسال نشد.")
         else:
-            print(f"ℹ️ ساعت {hour} روز {day}: از قبل پر بود ({already} پیام)، رد شد.")
+            print(f"ℹ️ ساعت {hour} روز {day}: پایه از قبل پر بود، فقط کوییزها چک می‌شن.")
+
+        quiz_need = need - filled_here
+        if quiz_need > 0:
+            quizzes = quiz_web.build_daily_quizzes(day, count=quiz_need)
+            for j, quiz in enumerate(quizzes):
+                idx = already + filled_here + j
+                q_dt = slot_dt + datetime.timedelta(minutes=2 * idx)
+                msg_id = send_quiz_poll(client, entity, quiz, q_dt)
+                if msg_id:
+                    counters["quizzes"] += 1
+                else:
+                    print(f"⚠️ ساعت {hour} روز {day}: ارسال یک کوییز شکست خورد.")
+            if len(quizzes) < quiz_need:
+                print(f"⚠️ ساعت {hour} روز {day}: فقط {len(quizzes)} از {quiz_need} کوییز ساخته شد.")
 
     elif hour == 19:
         if already == 0:
@@ -215,7 +269,7 @@ def main():
     book_queue = load_json(config.BOOK_QUEUE_FILE, [])
     alternator = load_json(ALTERNATOR_FILE, {})
 
-    counters = {"posts": 0, "books": 0}
+    counters = {"posts": 0, "books": 0, "quizzes": 0}
 
     with get_client() as client:
         entity = client.get_entity(config.TARGET_CHANNEL)
@@ -249,8 +303,8 @@ def main():
     save_json(ALTERNATOR_FILE, alternator)
 
     summary = (
-        f"وضعیت زمان‌بندی به‌روزرسانی شد. {counters['posts']} پست و {counters['books']} کتاب جدید "
-        f"زمان‌بندی شد (بر اساس شمارش زنده‌ی تلگرام)."
+        f"وضعیت زمان‌بندی به‌روزرسانی شد. {counters['posts']} پست، {counters['books']} کتاب و "
+        f"{counters['quizzes']} کوییز جدید زمان‌بندی شد (بر اساس شمارش زنده‌ی تلگرام)."
     )
     print(summary)
     if any(counters.values()):
