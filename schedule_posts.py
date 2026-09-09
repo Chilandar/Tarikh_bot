@@ -1,315 +1,237 @@
 # -*- coding: utf-8 -*-
 """
-اسکریپت اصلی زمان‌بندی. هر بار:
-  ۱. مستقیماً از خودِ تلگرام می‌پرسه الان واقعاً چند پیام توی هر (روز، ساعت)
-     زمان‌بندی شده - نه از یک فایل محلی که با جابه‌جایی دستیِ شما به‌روز نمی‌مونه.
-  ۲. برای هر (روز، ساعت)ی که هنوز به ظرفیتش نرسیده، محتوای مناسب اضافه می‌کنه.
+ساخت سوال کوییز تاریخی از مقالات واقعیِ ویکی‌پدیای فارسی درباره‌ی تاریخ -
+عمدتاً تاریخ ایران (شاهان، دودمان‌ها، جنگ‌ها، ایران باستان)، و بخشی هم
+تاریخ جهان. هر بار یک مقاله‌ی تصادفی از یکی از رده‌های تاریخیِ واقعیِ
+ویکی‌پدیا انتخاب و *از متن واقعیِ همون مقاله* سوال ساخته می‌شه - نه از
+تخیل آزاد مدل.
 
-قوانین ظرفیت هر ساعت (به‌وقت تهران):
-  ۱۰:۰۰ و ۱۳:۰۰  -> ظرفیت ۱ (عمومی)
-  ۱۶:۰۰          -> ظرفیت ۱ (سخن بزرگان/تصاویر قدیم، یکی‌درمیون) + QUIZZES_PER_16_SLOT کوییز
-                    (کوییزها از رویدادهای واقعیِ «امروز در تاریخ» ویکی‌پدیا ساخته می‌شن - quiz_web.py)
-  ۱۹:۰۰          -> ظرفیت ۱ + BOOKS_PER_SLOT (حکایت + کتاب)
-  ۲۲:۰۰          -> دست‌نخورده، کاملاً متعلق به خود کاربره
-
-اجرا: python schedule_posts.py
+برای جلوگیری از تکرارِ زیادِ یک موضوع، عنوان مقالاتی که قبلاً استفاده شدن
+توی state/quiz_used_topics.json نگه‌داری می‌شه (فقط آخرین چند صد تا، تا
+فایل بزرگ نشه - بعد از اون، تکرار دوباره اشکالی نداره).
 """
 
-import datetime
-import os
+import json
 import random
-import pytz
+import requests
 
 import config
-from telegram_client import get_client, load_json, save_json, send_bot_message
-from text_utils import clean_channel_post_text, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
-import quiz_web
-from telethon.tl.functions.messages import GetScheduledHistoryRequest, SendMediaRequest
-from telethon.tl.types import InputMediaPoll, Poll, PollAnswer, TextWithEntities
+from telegram_client import load_json, save_json
+from ai_providers import ask_ai, strip_json_fence
 
-LOOKAHEAD_DAYS = 14
-ALTERNATOR_FILE = config.STATE_DIR + "/alternator.json"
+WIKI_API = "https://fa.wikipedia.org/w/api.php"
+
+# این‌ها رده‌های واقعیِ ویکی‌پدیای فارسی‌ان (رده:...) - تعمداً چندتا و متنوع
+# انتخاب شدن تا اگه یکی خالی/کوچیک بود، بقیه جبران کنن.
+IRAN_HISTORY_CATEGORIES = [
+    "تاریخ ایران", "شاهان ایران", "ایران باستان",
+    "تاریخ نظامی ایران", "تاریخ سیاسی ایران",
+]
+WORLD_HISTORY_CATEGORIES = [
+    "تاریخ", "امپراتوری‌ها", "دوره‌های تاریخی", "تاریخ معاصر",
+]
+
+# چقدر از کوییزها از تاریخ ایران باشن در مقابل تاریخ جهان (طبق خواسته‌ی شما: بیشتر ایران)
+IRAN_WEIGHT = 0.75
+
+USED_TOPICS_FILE = config.STATE_DIR + "/quiz_used_topics.json"
+
+# پنجره‌ی «تنوعِ موضوع»: یه مقاله تا این‌قدر رکورد اخیر، دوباره انتخاب نمی‌شه
+# (روزی ۲ کوییز یعنی ~۱۵۰ روز/۵ ماه فاصله)
+MAX_RECENT_FOR_EXCLUSION = 300
+
+# پنجره‌ی «جلوگیری از تکرارِ عینِ سوال»: بزرگ‌تر از بالاست، چون حتی بعد از
+# اینکه یه مقاله دوباره قابل‌انتخاب شد، هنوز یادمونه قبلاً چه سوالی ازش
+# پرسیده بودیم تا سوال جدید زاویه‌ی متفاوتی داشته باشه
+MAX_RECORDS_REMEMBERED = 1000
+
+PRIOR_QUESTIONS_NOTE = """
+
+نکته‌ی مهم: قبلاً یک یا چند سوال درباره‌ی همین مقاله ساخته شده. سوال جدید
+باید از نظر فکت/زاویه‌ی اصلی با همه‌ی سوال‌های زیر واقعاً متفاوت باشه (نه
+فقط بازنویسیِ همون سوال با کلمات دیگه):
+{prior_list}"""
+
+QUESTION_PROMPT = """این خلاصه‌ای واقعی از مقاله‌ی ویکی‌پدیا درباره‌ی «{title}» است
+(ویکی‌پدیا منبعی است که برای اطلاعات تاریخیِ عمومی به‌طور گسترده مورد ارجاع
+قرار می‌گیره):
+
+\"\"\"{extract}\"\"\"
+
+بر اساس *فقط* اطلاعاتی که در همین متن آمده (بدون اضافه‌کردن جزئیاتی که اینجا
+نیومده و بدون حدس‌زدن)، یک سوال کوییز تاریخیِ چهارگزینه‌ای درباره‌ی «{title}»
+بساز. چند قانونِ مهم:
+
+۱. سطح سوال متوسط باشه - نه خیلی بدیهی، ولی نه پیچیده و گیج‌کننده. یک نفر
+   که علاقه‌مند به تاریخه (نه لزوماً متخصص) باید بتونه با کمی فکر جوابش رو
+   بده.
+۲. سوال فقط حول **یک فکتِ مشخص** بچرخه (مثلاً یک تاریخ، یک اسم، یک مکان، یک
+   نتیجه). خیلی به‌ندرت (نه هر بار) اگه دو فکتِ نزدیک به‌هم طبیعی به‌نظر
+   می‌رسید می‌تونی ترکیب کنی، ولی هرگز بیشتر از دو تا - و حتی اون‌موقع هم
+   سوال باید کوتاه و یک‌جمله‌ای بمونه، نه چندجزئی و طولانی.
+۳. سوال باید مثل یک سوال مستقلِ کوییز خونده بشه - **هرگز** به وجودِ متن/مقاله/منبع
+   اشاره نکن. عبارت‌هایی مثل «بر اساس متن»، «طبق این مقاله»، «در متن بالا»
+   یا هر اشاره‌ی مشابه دیگه‌ای بهش، *ممنوعه* - انگار داری این سوال رو بدون
+   داشتنِ هیچ متنی، مستقیم از حفظ می‌پرسی.
+۴. سوال و همه‌ی گزینه‌ها کوتاه و به فارسیِ روان باشن.
+
+اگه این متن اطلاعات کافی برای یک سوال دقیق و معنادار نداره (مثلاً خیلی کوتاه
+یا کلیه)، دقیقاً همین را برگردان: {{"skip": true}}
+
+در غیر این صورت فقط یک JSON خام (بدون ```json و بدون هیچ توضیح اضافه)
+دقیقاً با این فرمت برگردون:
+{{"question": "متن سوال (کوتاه، حداکثر ۱۵۰ کاراکتر)",
+  "options": ["گزینه ۱", "گزینه ۲", "گزینه ۳", "گزینه ۴"],
+  "correct_index": 0}}
+
+دقیقاً ۴ گزینه، فقط یکی درست، هر گزینه کوتاه (چند کلمه، نه یک جمله). گزینه‌های
+غلط باید معقول و نزدیک به موضوع باشن، نه واضح و مسخره غلط، ولی هم نباید
+گمراه‌کننده و پیچیده باشن. correct_index اندیس صفرمبنای گزینه‌ی درست در
+آرایه‌ی options است."""
 
 
-def tz_now():
-    return datetime.datetime.now(pytz.timezone(config.TIMEZONE))
+def _truncate(s, limit):
+    s = (s or "").strip()
+    return s if len(s) <= limit else s[: limit - 1].rstrip() + "…"
 
 
-def hour_capacity(hour: int) -> int:
-    if hour == 16:
-        return 1 + config.QUIZZES_PER_16_SLOT
-    if hour == 19:
-        return 1 + config.BOOKS_PER_SLOT
-    return 1  # اسلات‌های عمومی (۱۰، ۱۳)
-
-
-def get_live_hour_counts(client, entity):
+def _fetch_category_articles(category: str, limit: int = 50, timeout: int = 20):
     """
-    تنها منبع حقیقتِ «این اسلات پره یا نه»: می‌شمره الان واقعاً چند پیام توی
-    هر (روز، ساعت) روی تلگرام زمان‌بندی شده - چه ربات گذاشته باشتش چه خودِ
-    کاربر دستی جابه‌جا/اضافه کرده باشه.
+    برای یک رده‌ی ویکی‌پدیا، لیستی از {"title", "extract"} صفحات عضوش رو
+    برمی‌گردونه - در یک درخواست (generator=categorymembers + prop=extracts).
     """
-    result = client(GetScheduledHistoryRequest(peer=entity, hash=0))
-    tz = pytz.timezone(config.TIMEZONE)
-    now = tz_now()
-    counts = {}
-    for m in result.messages:
-        dt = m.date.astimezone(tz)
-        if dt <= now:
-            continue
-        key = (dt.date(), dt.hour)
-        counts[key] = counts.get(key, 0) + 1
-    return counts
-
-
-def pop_best(queue, category=None, exclude_categories=None):
-    candidates = [
-        item for item in queue
-        if not item.get("used")
-        and (category is None or item.get("category") == category)
-        and (exclude_categories is None or item.get("category") not in exclude_categories)
-    ]
-    if not candidates:
-        return None
-    candidates.sort(key=lambda x: -x.get("score", 0))
-    item = candidates[0]
-    item["used"] = True
-    return item
-
-
-def pop_next_book(book_queue):
-    for item in book_queue:
-        if not item.get("used"):
-            item["used"] = True
-            return item
-    return None
-
-
-def get_16_category(alternator: dict) -> str:
-    last = alternator.get("last_16_category")
-    if last == config.CATEGORY_SOKHAN_BOZORGAN:
-        nxt = config.CATEGORY_AKS_IRAN_QADIM
-    else:
-        nxt = config.CATEGORY_SOKHAN_BOZORGAN
-    alternator["last_16_category"] = nxt
-    return nxt
-
-
-def has_media(item: dict) -> bool:
-    return bool(item.get("media_type")) or bool(item.get("has_photo"))
-
-
-def send_post(client, entity, item: dict, schedule_dt: datetime.datetime):
-    final_text = clean_channel_post_text(item["text"])
-
-    if get_visible_content_length(item["text"]) < MIN_VISIBLE_CONTENT_LEN:
-        return None  # محافظ نهایی: اگه عملاً محتوایی نمونده، پست نمی‌شه
-
-    if has_media(item):
-        source_msg = client.get_messages(item["channel"], ids=item["message_id"])
-        if not source_msg or not source_msg.media:
-            return None
-        media_path = client.download_media(source_msg)
-        if not media_path:
-            return None
-        sent = client.send_file(entity, media_path, caption=final_text, schedule=schedule_dt)
-    else:
-        sent = client.send_message(entity, final_text, schedule=schedule_dt)
-
-    return sent.id
-
-
-def send_book(client, entity, book_item: dict, schedule_dt: datetime.datetime):
-    sent = client.send_file(
-        entity,
-        book_item["file_path"],
-        caption=book_item["caption"],
-        force_document=True,
-        schedule=schedule_dt,
-    )
+    params = {
+        "action": "query",
+        "format": "json",
+        "generator": "categorymembers",
+        "gcmtitle": f"رده:{category}",
+        "gcmlimit": limit,
+        "gcmtype": "page",
+        "prop": "extracts",
+        "exintro": 1,
+        "explaintext": 1,
+        "exchars": 1200,
+    }
     try:
-        os.remove(book_item["file_path"])
-    except OSError:
-        pass
-    return sent.id
+        resp = requests.get(WIKI_API, params=params, timeout=timeout,
+                             headers={"User-Agent": "TarikhganBot/1.0"})
+        resp.raise_for_status()
+        pages = resp.json().get("query", {}).get("pages", {})
+    except Exception as e:
+        print(f"⚠️ گرفتن رده‌ی «{category}» از ویکی‌پدیا شکست خورد: {e}")
+        return []
+
+    articles = []
+    for page in pages.values():
+        title = page.get("title", "")
+        extract = (page.get("extract") or "").strip()
+        if title and len(extract) > 150:
+            articles.append({"title": title, "extract": extract})
+    return articles
 
 
-def send_quiz_poll(client, entity, quiz: dict, schedule_dt: datetime.datetime):
-    """
-    یک Poll تعاملی از نوع quiz می‌سازه؛ با همون حساب کاربری‌ای که ربات بهش
-    وصله (نه Bot API). فقط «ترتیب تصادفی گزینه‌ها» (که قبل از این تابع انجام
-    شده) و «تنظیم پاسخ درست» (quiz=True) فعاله - چندجوابی و نمایش عمومی
-    رأی‌دهنده‌ها خاموشه. توضیحاتِ کوییز همیشه دقیقاً امضای کاناله.
-    """
-    answers = [
-        PollAnswer(text=TextWithEntities(text=opt, entities=[]), option=bytes([i]))
-        for i, opt in enumerate(quiz["options"])
-    ]
-    poll = Poll(
-        id=random.randint(1, 2**31 - 1),
-        question=TextWithEntities(text=quiz["question"], entities=[]),
-        answers=answers,
-        quiz=True,
-        multiple_choice=False,
-        public_voters=False,
-    )
-    media = InputMediaPoll(
-        poll=poll,
-        correct_answers=[bytes([quiz["correct_index"]])],
-        solution=config.SIGNATURE,
-        solution_entities=[],
-    )
-    result = client(SendMediaRequest(peer=entity, media=media, message="", schedule_date=schedule_dt))
-    for upd in result.updates:
-        if hasattr(upd, "message") and hasattr(upd.message, "id"):
-            return upd.message.id
+def _pick_category() -> str:
+    pool = IRAN_HISTORY_CATEGORIES if random.random() < IRAN_WEIGHT else WORLD_HISTORY_CATEGORIES
+    return random.choice(pool)
+
+
+def _pick_fresh_article(excluded_titles: set, max_attempts: int = 6):
+    for _ in range(max_attempts):
+        articles = _fetch_category_articles(_pick_category())
+        random.shuffle(articles)
+        for article in articles:
+            if article["title"] not in excluded_titles:
+                return article
     return None
 
 
-def try_send_with_retries(pop_func, send_func, client, entity, slot_dt, max_attempts=3):
+def build_quiz_from_article(article: dict, prior_questions: list = None):
+    prompt = QUESTION_PROMPT.format(title=article["title"], extract=article["extract"])
+    if prior_questions:
+        prior_list = "\n".join(f"- {q}" for q in prior_questions)
+        prompt += PRIOR_QUESTIONS_NOTE.format(prior_list=prior_list)
+
+    raw = ask_ai(prompt, timeout=30)
+    if not raw:
+        return None
+
+    try:
+        result = json.loads(strip_json_fence(raw))
+    except Exception as e:
+        print(f"⚠️ پاسخ مدل JSON معتبر نبود: {e} -> {raw}")
+        return None
+
+    if result.get("skip"):
+        return None
+
+    try:
+        question = result["question"]
+        options = list(result["options"])
+        correct_index = int(result["correct_index"])
+        assert len(options) == 4 and 0 <= correct_index < 4
+    except Exception as e:
+        print(f"⚠️ فرمت سوالِ کوییز نامعتبر بود: {e} -> {result}")
+        return None
+
+    # محافظ اضافه: اگه مدل با وجود دستور صریح، بازم به «متن/مقاله» اشاره کرده
+    # باشه، این سوال رو رد می‌کنیم (به‌جای پستِ یه سوالِ بدشکل)
+    leak_phrases = ["بر اساس متن", "طبق متن", "بر اساس این متن", "بر اساس مقاله",
+                     "طبق این مقاله", "طبق مقاله", "در متن بالا", "طبق منبع", "بر اساس منبع"]
+    if any(p in question for p in leak_phrases):
+        print(f"⚠️ سوال به «متن/مقاله» اشاره کرده بود، رد شد: {question}")
+        return None
+
+    # ترتیب گزینه‌ها رو به‌هم می‌ریزیم تا جای گزینه‌ی درست همیشه تصادفی باشه
+    order = list(range(4))
+    random.shuffle(order)
+    shuffled_options = [options[i] for i in order]
+    shuffled_correct_index = order.index(correct_index)
+
+    return {
+        "question": _truncate(question, 200),
+        "options": [_truncate(o, 60) for o in shuffled_options],
+        "correct_index": shuffled_correct_index,
+    }
+
+
+def build_daily_quizzes(day, count: int = 2):
     """
-    یک آیتم رو از صف برمی‌داره و ارسالش می‌کنه؛ اگه ارسال شکست خورد، آیتم
-    رو به حالت "استفاده‌نشده" برمی‌گردونه (تا برای دفعه‌ی بعد از دست نره) و
-    آیتم بعدی رو امتحان می‌کنه - تا max_attempts بار.
+    `count` کوییز از `count` مقاله‌ی متفاوت (که اخیراً استفاده نشدن) درباره‌ی
+    تاریخ (بیشتر ایران، بخشی جهان) می‌سازه. `day` فقط برای هماهنگی با بقیه‌ی
+    کد نگه داشته شده - منبع محتوا دیگه به تاریخ روز وابسته نیست.
+
+    برای هر مقاله، اگه قبلاً (حتی خارج از پنجره‌ی تنوعِ موضوع) سوالی ازش
+    ساخته شده باشه، اون سوال(ها) به مدل داده می‌شه تا سوال جدید تکرار نباشه.
     """
-    for _ in range(max_attempts):
-        item = pop_func()
-        if not item:
-            return None, None
-        msg_id = send_func(item, slot_dt)
-        if msg_id:
-            return item, msg_id
-        item["used"] = False  # ارسال شکست خورد - این آیتم رو از دست ندیم
-    return None, None
+    records = load_json(USED_TOPICS_FILE, [])
+    recent_titles = {r["title"] for r in records[-MAX_RECENT_FOR_EXCLUSION:]}
 
+    prior_questions_by_title = {}
+    for r in records:
+        if r.get("question"):
+            prior_questions_by_title.setdefault(r["title"], []).append(r["question"])
 
-def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, alternator, counters):
-    tz = pytz.timezone(config.TIMEZONE)
-    slot_dt = tz.localize(datetime.datetime.combine(day, datetime.time(hour=hour)))
-    filled_here = 0
+    quizzes = []
+    new_records = []
+    excluded = set(recent_titles)
 
-    if hour == 16:
-        filled_here = 0
-        if already == 0:
-            category = get_16_category(alternator)
-            item, msg_id = try_send_with_retries(
-                lambda: pop_best(post_queue, category=category),
-                lambda it, dt: send_post(client, entity, it, dt),
-                client, entity, slot_dt,
-            )
-            if msg_id:
-                counters["posts"] += 1
-                filled_here += 1
-            else:
-                print(f"⚠️ ساعت {hour} روز {day}: پستی از دسته‌ی {category} توی صف پیدا/ارسال نشد.")
-        else:
-            print(f"ℹ️ ساعت {hour} روز {day}: پایه از قبل پر بود، فقط کوییزها چک می‌شن.")
+    attempts = 0
+    while len(quizzes) < count and attempts < count * 4:
+        attempts += 1
+        article = _pick_fresh_article(excluded)
+        if not article:
+            break
+        excluded.add(article["title"])  # همین اجرا دوباره سراغش نریم
 
-        quiz_need = need - filled_here
-        if quiz_need > 0:
-            quizzes = quiz_web.build_daily_quizzes(day, count=quiz_need)
-            for j, quiz in enumerate(quizzes):
-                idx = already + filled_here + j
-                q_dt = slot_dt + datetime.timedelta(minutes=2 * idx)
-                msg_id = send_quiz_poll(client, entity, quiz, q_dt)
-                if msg_id:
-                    counters["quizzes"] += 1
-                else:
-                    print(f"⚠️ ساعت {hour} روز {day}: ارسال یک کوییز شکست خورد.")
-            if len(quizzes) < quiz_need:
-                print(f"⚠️ ساعت {hour} روز {day}: فقط {len(quizzes)} از {quiz_need} کوییز ساخته شد.")
+        prior = prior_questions_by_title.get(article["title"], [])
+        quiz = build_quiz_from_article(article, prior_questions=prior)
+        # چه موفق بشه چه نه، ثبت می‌شه - تا برای دفعه‌ی بعد دوباره سراغ همین
+        # مقاله‌ی نامناسب نریم (question=None یعنی فقط برای پنجره‌ی تنوع
+        # موضوع حساب می‌شه، نه برای یادآوریِ سوال قبلی)
+        new_records.append({"title": article["title"], "question": quiz["question"] if quiz else None})
+        if quiz:
+            quizzes.append(quiz)
 
-    elif hour == 19:
-        if already == 0:
-            item, msg_id = try_send_with_retries(
-                lambda: pop_best(post_queue, category=config.CATEGORY_HEKAYAT),
-                lambda it, dt: send_post(client, entity, it, dt),
-                client, entity, slot_dt,
-            )
-            if msg_id:
-                counters["posts"] += 1
-                filled_here += 1
-            else:
-                print(f"⚠️ ساعت {hour} روز {day}: پست حکایتی توی صف پیدا/ارسال نشد.")
-        remaining = need - filled_here
-        for j in range(max(remaining, 0)):
-            idx = already + filled_here + j
-            b_dt = slot_dt + datetime.timedelta(minutes=2 * idx)
-            book_item = pop_next_book(book_queue)
-            if not book_item:
-                print(f"⚠️ ساعت {hour} روز {day}: کتابی توی صف نبود.")
-                break
-            msg_id = send_book(client, entity, book_item, b_dt)
-            if msg_id:
-                counters["books"] += 1
-            else:
-                book_item["used"] = False
-                print(f"⚠️ ساعت {hour} روز {day}: ارسال کتاب شکست خورد.")
+    save_json(USED_TOPICS_FILE, (records + new_records)[-MAX_RECORDS_REMEMBERED:])
 
-    else:  # اسلات‌های عمومی (۱۰، ۱۳)
-        for j in range(need):
-            idx = already + j
-            g_dt = slot_dt + datetime.timedelta(minutes=2 * idx) if idx else slot_dt
-            item, msg_id = try_send_with_retries(
-                lambda: pop_best(post_queue, exclude_categories=config.RESERVED_CATEGORIES),
-                lambda it, dt: send_post(client, entity, it, dt),
-                client, entity, g_dt,
-            )
-            if msg_id:
-                counters["posts"] += 1
-            elif item is None:
-                print(f"⚠️ ساعت {hour} روز {day}: هیچ پستِ عمومی‌ای توی صف نبود.")
-                break
-            else:
-                print(f"⚠️ ساعت {hour} روز {day}: یک پست عمومی پیدا شد ولی ارسالش شکست خورد.")
-
-
-def main():
-    post_queue = load_json(config.POST_QUEUE_FILE, [])
-    book_queue = load_json(config.BOOK_QUEUE_FILE, [])
-    alternator = load_json(ALTERNATOR_FILE, {})
-
-    counters = {"posts": 0, "books": 0, "quizzes": 0}
-
-    with get_client() as client:
-        entity = client.get_entity(config.TARGET_CHANNEL)
-        client.parse_mode = "html"
-
-        live_counts = get_live_hour_counts(client, entity)
-        now = tz_now()
-
-        for day_offset in range(LOOKAHEAD_DAYS + 1):
-            day = (now + datetime.timedelta(days=day_offset)).date()
-            for hour in config.POSTING_HOURS:
-                if hour in config.RESERVED_HOURS:
-                    continue  # ساعت ۲۲ - کاملاً دست‌نخورده، متعلق به خود کاربره
-
-                tz = pytz.timezone(config.TIMEZONE)
-                slot_dt = tz.localize(datetime.datetime.combine(day, datetime.time(hour=hour)))
-                if slot_dt <= now:
-                    continue
-
-                already = live_counts.get((day, hour), 0)
-                capacity = hour_capacity(hour)
-                need = capacity - already
-                if need <= 0:
-                    continue
-
-                fill_hour(client, entity, day, hour, already, need,
-                          post_queue, book_queue, alternator, counters)
-
-    save_json(config.POST_QUEUE_FILE, post_queue)
-    save_json(config.BOOK_QUEUE_FILE, book_queue)
-    save_json(ALTERNATOR_FILE, alternator)
-
-    summary = (
-        f"وضعیت زمان‌بندی به‌روزرسانی شد. {counters['posts']} پست، {counters['books']} کتاب و "
-        f"{counters['quizzes']} کوییز جدید زمان‌بندی شد (بر اساس شمارش زنده‌ی تلگرام)."
-    )
-    print(summary)
-    if any(counters.values()):
-        send_bot_message(f"📅 {summary}")
-
-
-if __name__ == "__main__":
-    main()
+    return quizzes
