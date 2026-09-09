@@ -11,10 +11,10 @@
   - قبل از اضافه‌کردن هر پست، هش متنش با پست‌های قبلاً دیده‌شده مقایسه می‌شه.
   - هیچ پستی (به‌جز حکایت) بدون عکس/فیلم واقعی اضافه نمی‌شه.
 
-درباره‌ی دسته‌بندی با هوش مصنوعی: به‌جای یک درخواست به‌ازای هر پست، پست‌های
+درباره‌ی دسته‌بندی با Gemini: به‌جای یک درخواست به‌ازای هر پست، پست‌های
 واجدشرایط (بعد از رد تکراری‌ها و پست‌های خیلی کوتاه) توی یک بافر جمع می‌شن و
-هر ai_classify.BATCH_SIZE تا، با هم در یک درخواست فرستاده می‌شن - هم
-سریع‌تره هم به سقف رایگان نمی‌خوریم.
+هر ai_classify.BATCH_SIZE تا، با هم در یک درخواست به Gemini فرستاده می‌شن -
+هم سریع‌تره هم به سقف رایگان نمی‌خوریم.
 
 اجرا: python scan_history.py
 """
@@ -22,7 +22,10 @@
 import datetime
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message, resolve_source_entity
-from text_utils import detect_category, text_hash_for_dedupe, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
+from text_utils import (
+    detect_category, text_hash_for_dedupe, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN,
+    mechanical_pre_clean, clean_and_assemble_post_text,
+)
 from ai_classify import classify_batch_with_ai, BATCH_SIZE
 
 import pytz
@@ -77,7 +80,7 @@ def dedupe_existing_queue(queue: list, seen_hashes: dict) -> list:
 
 def finalize_candidate(candidate: dict, ai_result: dict, stats: dict):
     """
-    یک کاندید (که از پیش دسته‌بندی نشده) رو با نتیجه‌ی هوش مصنوعی (یا فال‌بک
+    یک کاندید (که از پیش دسته‌بندی نشده) رو با نتیجه‌ی Gemini (یا فال‌بک
     کلیدواژه‌ای) نهایی می‌کنه. اگه رد بشه، None برمی‌گردونه.
     """
     text = candidate["text"]
@@ -98,10 +101,16 @@ def finalize_candidate(candidate: dict, ai_result: dict, stats: dict):
     avg_views = update_channel_average(stats, candidate["channel"], candidate["views"] or 0)
     score = score_message(text, candidate["views"] or 0, candidate["forwards"] or 0, avg_views)
 
+    # پاک‌سازیِ نهایی: حذف استیکر/امضا (همیشه، مکانیکی و امن) + اعمالِ
+    # تصمیم‌های هوش مصنوعی درباره‌ی هشتگ/منبع (اگه ai_result موجود بود).
+    # اگه ai_result نبود (AI شکست خورده)، فقط پاک‌سازیِ مکانیکی انجام می‌شه -
+    # بدون منبع/هشتگِ جدید - تا حداقلِ خطا رخ بده.
+    final_text = clean_and_assemble_post_text(text, ai_result)
+
     return {
         "channel": candidate["channel"],
         "message_id": candidate["message_id"],
-        "text": text,
+        "text": final_text,
         "media_type": media_type,
         "category": category,
         "score": round(score, 3),
@@ -281,7 +290,14 @@ def main():
             nonlocal added_count
             if not pending:
                 return
-            items = [{"text": c["text"], "has_media": c["media_type"] is not None} for _, c in pending]
+            # متنی که به هوش مصنوعی می‌دیم باید از قبل مکانیکی پاک شده باشه
+            # (بدون استیکر/امضا) تا هشتگ‌هایی که برمی‌گردونه دقیقاً با متنِ
+            # نهایی هم‌خوانی داشته باشه (وگرنه apply_hashtag_actions پیدا
+            # نمی‌کنه و اون تصمیم رو بی‌خطر نادیده می‌گیره).
+            items = [
+                {"text": mechanical_pre_clean(c["text"]), "has_media": c["media_type"] is not None}
+                for _, c in pending
+            ]
             if config.AI_PROVIDER_CHAIN:
                 ai_results = classify_batch_with_ai(items)
             else:
