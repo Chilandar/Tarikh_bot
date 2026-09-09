@@ -1,56 +1,47 @@
 [
   {
-    "channel": "World5History",
-    "message_id": 343,
-    "text": "چارلی چاپلین درمیان مردم پایان جنگ جهانی (امریکا وشادی مردم)   telegram.me/Tssjahan",
+    "channel": "IranAncient",
+    "message_id": 132,
+    "text": "گردن بند ساخته شده از طلا و سنگ عقیق، اوایل هزاره دوم پیش از میلاد،یافت شده در شوش، موزه‌ لوور\n#شوش #موزه_لوور #ایران_باستان #آثار_باستانی #صنایع_دستی_باستان",
     "media_type": "photo",
     "category": "aks_iran_qadim",
-    "score": 10.92,
+    "score": 10.518,
+    "used": false
+  },
+  {
+    "channel": "ancientir",
+    "message_id": 86,
+    "text": "آنها پای مذهب \nرا وسط میکشند \nتا کارگر بجای اعتراض ، \nدعا کند..\n#کارگران #مذهب #جامعه_شناسی #عدالت_اجتماعی",
+    "media_type": "photo",
+    "category": "general",
+    "score": 489.116,
+    "used": true
+  },
+  {
+    "channel": "Anjomane_bozorgan",
+    "message_id": 40,
+    "text": "از میان دو واژه ی انسان و انسانیت؛\n\nاولی در میان کوچه ها...\nدومی در لابلای کتاب ها سرگردان است...!\n\nویکتور هوگو\n#ویکتور_هوگو #انسانیت #سخن_بزرگان #جملات_زیبا",
+    "media_type": "photo",
+    "category": "sokhan_bozorgan",
+    "score": 116.843,
+    "used": false
+  },
+  {
+    "channel": "World5History",
+    "message_id": 346,
+    "text": "پیامدهای اسید پاشی در ایران 1359  telegram.me/Tssjahan\n#اسید_پاشی #ایران_۱۳۵۹ #تاریخ_معاصر #حوادث_تاریخی",
+    "media_type": "photo",
+    "category": "aks_iran_qadim",
+    "score": 10.717,
     "used": false
   },
   {
     "channel": "IranAncient",
-    "message_id": 127,
-    "text": "ظرف برنزی ، تمدن ایلام، قرن 8 قبل از میلاد، موزه متروپولتین نیویورک\n\n@ElamiteHistorian",
+    "message_id": 135,
+    "text": "تنگ برنزی مزین به خط میخی مربوط به هزاره دوم قبل از میلاد،لرستان، موزه بریتانیا \nارتفاع: 16 سانتیمتر، پهنا: 13.7 سانتیمتر، وزن: 439 گرم\n#لرستان #موزه_بریتانیا #ایران_باستان #تنگ_برنزی #خط_میخی",
     "media_type": "photo",
     "category": "aks_iran_qadim",
-    "score": 6.565,
-    "used": false
-  },
-  {
-    "channel": "ancientir",
-    "message_id": 83,
-    "text": "زمانی شاملو در کنایه به سهراب و شعر معروف او (آب را گل نکنیم) گفته بود: وقتی انسان‌ها چنین در ویتنام قتل عام می‌شوند، چگونه می‌شود شاعری نگران آب خوردن یک کبوتر باشد.\n\n+و سهراب در پاسخ گفته بود: انسانی که نگران آب خوردن یک کبوتر نباشد، همان انسانی است که به راحتی آدم هم می‌کشد.\n\n@ancientir",
-    "media_type": "photo",
-    "category": "hekayat_dastan_sher",
-    "score": 317.075,
-    "used": true
-  },
-  {
-    "channel": "World5History",
-    "message_id": 344,
-    "text": "تشییع جنازه ویکتور هوگو\nپاریس 1885           telegram.me/Tssjahan",
-    "media_type": "photo",
-    "category": "aks_iran_qadim",
-    "score": 28.808,
-    "used": false
-  },
-  {
-    "channel": "AsrTarikh",
-    "message_id": 39173,
-    "text": "تصادف دو خودرو در جاده رامسر سال ۱۳۱۲ شمسی\n\n+جالب اینکه که در عکس بعضی لبخند می‌زنند.\n\n+احتمالا این تصادف در ردیف اولین تصادفات ثبت شده در ایران می باشد.\n\n@bi3ansor",
-    "media_type": "photo",
-    "category": "aks_iran_qadim",
-    "score": 82.531,
-    "used": true
-  },
-  {
-    "channel": "ancientir",
-    "message_id": 84,
-    "text": "خبرنگاراز شاه پرسيد شماچرا اينقدر هليكوپتر ميخريد؟\n\n+شاه گفت:از همسايه كوچكم بپرسيدچرا اينقدر تانک ميخرد؛من برای هر تانک عراقی يک كبرای آماده به پرواز دارم●\n\n@ancientir",
-    "media_type": "photo",
-    "category": "sokhan_bozorgan",
-    "score": 521.071,
+    "score": 4.567,
     "used": false
   }
 ]
