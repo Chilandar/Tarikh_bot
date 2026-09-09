@@ -22,11 +22,10 @@ VALID_CATEGORIES = {"sokhan_bozorgan", "aks_iran_qadim", "hekayat_dastan_sher", 
 BATCH_SIZE = 15  # چند پست در هر درخواست فرستاده بشه
 
 
-CATEGORY_RULES = """تو دستیار دسته‌بندی محتوا برای یک کانال تلگرامی تاریخی/فرهنگی به اسم
-«تاریخگان» هستی. این کانال پست‌هایی درباره‌ی تاریخ، فرهنگ، ادبیات و تصاویر
-قدیمی منتشر می‌کنه. باید هر متنی که میدم رو بر اساس تعریف‌های دقیقی که میدم
-بررسی کنی و دو تصمیم بگیری: این پست به کدوم دسته تعلق داره، و آیا اصلاً ارزش
-بازنشر داره یا نه.
+CATEGORY_RULES = """تو دستیار دسته‌بندی و پاک‌سازیِ محتوا برای یک کانال تلگرامی تاریخی/فرهنگی
+به اسم «تاریخگان» هستی. این کانال پست‌هایی درباره‌ی تاریخ، فرهنگ، ادبیات و
+تصاویر قدیمی منتشر می‌کنه. باید هر متنی که میدم رو بر اساس تعریف‌های دقیقی
+که میدم بررسی کنی.
 
 === دسته‌ها (دقیقاً به همین ترتیب اولویت بررسی کن) ===
 
@@ -75,7 +74,46 @@ CATEGORY_RULES = """تو دستیار دسته‌بندی محتوا برای ی
 - تکراری/کلیشه‌ای به‌نظر می‌رسه (چیزی که هزاران بار در کانال‌های مشابه دیده
   شده، بدون هیچ زاویه یا جزئیات خاص).
 در غیر این صورت، اگه محتوا معنادار، جذاب، و مرتبط با روحیه‌ی یک کانال
-تاریخی/فرهنگیه، true بذار."""
+تاریخی/فرهنگیه، true بذار.
+
+=== وظیفه‌ی دوم: تحلیلِ هشتگ‌ها، منبع، و پیشنهادِ هشتگ (خیلی مهم، دقیق باش) ===
+
+توجه: متنی که بهت می‌دم از قبل استیکر/ایموجی‌هاش حذف شده (این کار قبلاً
+مکانیکی انجام شده، لازم نیست بهش فکر کنی). فقط باید این تصمیم‌ها رو بگیری:
+
+الف) هشتگ‌ها (hashtag_actions):
+هر هشتگی (کلمه‌ای که با # شروع می‌شه، هرجای متن - چه ابتدا چه انتها) که
+توی متن می‌بینی رو بررسی کن و دقیقاً یکی از این دو کار رو براش مشخص کن:
+  - "remove": اگه این هشتگ صرفاً یک برچسبِ تزئینی/دسته‌بندیه (مثل نام یک
+    ژانر، یک شعار، یا آیدیِ کانال) و هیچ اطلاعات معناداری اضافه نمی‌کنه.
+  - "convert_to_name": اگه این هشتگ در واقع اسمِ یک شخص واقعیه (مثلاً
+    نویسنده یا شاعر یا کسی که این جمله/سخن از اونه) که بجای نوشتن ساده‌ی
+    اسمش، هشتگ شده - در این حالت باید فیلد "name" رو هم بدی: همون اسم،
+    بدون # و بدون آندرلاین (آندرلاین‌ها رو با فاصله عوض کن). مثلاً
+    #فرانتس_کافکا باید بشه name="فرانتس کافکا".
+دقیقاً همون رشته‌ی هشتگ (با # و همون شکل که توی متنِ ورودی هست) رو توی
+فیلد "tag" بذار تا بتونیم پیداش کنیم. هرگز به خودِ متنِ اصلی/شعر/حکایت/
+نقل‌قول دست نزن - فقط درباره‌ی هشتگ‌ها تصمیم بگیر. اگه هیچ هشتگی نبود،
+لیست خالی بده.
+
+ب) منبع (source_text و source_line_raw):
+گاهی در متن (معمولاً نزدیک انتها) جمله‌ای هست که می‌گه این محتوا از کجا
+گرفته شده - مثلاً با کلماتی مثل «منبع:»، «برگرفته از:»، «به نقل از:» یا
+مشابه. اگه همچین چیزی دیدی:
+  - source_text: فقط خودِ توضیحِ منبع (بدون کلمه‌ی «منبع»، بدون هیچ نماد).
+  - source_line_raw: دقیقاً و عیناً (کلمه‌به‌کلمه، بدون هیچ تغییری) همون
+    خط یا خط‌هایی از متنِ ورودی که این منبع توشون نوشته شده - این رو
+    می‌خوایم تا خطِ قدیمی رو حذف کنیم و با فرمتِ استاندارد جایگزینش کنیم.
+اگه پست منبعی نداشت، هر دو رو خالی ("") بذار - هرگز منبع الکی نساز.
+توجه مهم: اگه پست از نوع «سخن بزرگان» است و صرفاً اسمِ گوینده در انتهاش
+اومده (چه هشتگ چه ساده)، اون اسمِ گوینده «منبع» حساب نمی‌شه - بخشی از
+خودِ متنه (با قانون «الف» در موردش تصمیم گرفتی). source_text فقط برای
+جایی‌ه که واقعاً از منبعِ محتوا (کتاب/سایت/کانال دیگه) حرف زده شده.
+
+پ) هشتگ‌های پیشنهادی (suggested_hashtags):
+حداکثر ۵ هشتگ فارسیِ مرتبط با موضوع همین پست بساز (با آندرلاین به‌جای
+فاصله، مثل #فرانتس_کافکا یا #سخن_بزرگان). باید واقعاً به محتوای همین پست
+مرتبط باشن، نه عمومی و بی‌ربط."""
 
 
 PROMPT_TEMPLATE = CATEGORY_RULES + """
@@ -89,15 +127,20 @@ PROMPT_TEMPLATE = CATEGORY_RULES + """
 === خروجی ===
 فقط و فقط یک JSON خام (بدون ```json و بدون هیچ توضیح اضافه‌ای) دقیقاً با
 این فرمت برگردون:
-{{"category": "یکی از چهار مقدار: sokhan_bozorgan / aks_iran_qadim / hekayat_dastan_sher / general", "is_good": true یا false}}"""
+{{"category": "یکی از چهار مقدار: sokhan_bozorgan / aks_iran_qadim / hekayat_dastan_sher / general",
+  "is_good": true یا false,
+  "hashtag_actions": [{{"tag": "#...", "action": "remove"}}, {{"tag": "#...", "action": "convert_to_name", "name": "..."}}],
+  "source_text": "",
+  "source_line_raw": "",
+  "suggested_hashtags": ["#...", "#..."]}}"""
 
 
 BATCH_PROMPT_TEMPLATE = CATEGORY_RULES + """
 
 === ورودی ===
 در ادامه {n} پست جداگانه میاد، هرکدوم با یک شماره. برای *هرکدوم به‌طور
-مستقل* (بدون ربط‌دادن به بقیه) دسته و is_good رو طبق همون قوانین بالا تعیین
-کن.
+مستقل* (بدون ربط‌دادن به بقیه) تمام تصمیم‌های بالا رو طبق همون قوانین
+تعیین کن.
 
 {items_block}
 
@@ -105,7 +148,68 @@ BATCH_PROMPT_TEMPLATE = CATEGORY_RULES + """
 فقط و فقط یک آرایه‌ی JSON خام برگردون (بدون ```json و بدون هیچ توضیح
 اضافه‌ای) - دقیقاً {n} عضو، دقیقاً به همون ترتیب شماره‌های بالا. هر عضو باید
 دقیقاً این شکل باشه:
-[{{"category": "...", "is_good": true}}, {{"category": "...", "is_good": false}}, ...]"""
+[{{"category": "...", "is_good": true,
+   "hashtag_actions": [{{"tag": "#...", "action": "remove"}}],
+   "source_text": "", "source_line_raw": "",
+   "suggested_hashtags": ["#...", "#..."]}}, ...]"""
+
+
+MAX_HASHTAG_ACTIONS = 12
+MAX_TAG_LEN = 60
+MAX_NAME_LEN = 80
+MAX_SOURCE_TEXT_LEN = 300
+MAX_SOURCE_LINE_RAW_LEN = 400
+MAX_SUGGESTED_HASHTAGS = 5
+MAX_SUGGESTED_TAG_LEN = 40
+
+
+def _sanitize_hashtag_actions(raw) -> list:
+    if not isinstance(raw, list):
+        return []
+    cleaned = []
+    for act in raw[:MAX_HASHTAG_ACTIONS]:
+        if not isinstance(act, dict):
+            continue
+        tag = str(act.get("tag", "")).strip()
+        kind = act.get("action")
+        if not tag.startswith("#") or len(tag) > MAX_TAG_LEN:
+            continue
+        if kind == "remove":
+            cleaned.append({"tag": tag, "action": "remove"})
+        elif kind == "convert_to_name":
+            name = str(act.get("name", "")).strip()
+            if name and len(name) <= MAX_NAME_LEN:
+                cleaned.append({"tag": tag, "action": "convert_to_name", "name": name})
+    return cleaned
+
+
+def _sanitize_short_text(raw, max_len) -> str:
+    if not isinstance(raw, str):
+        return ""
+    s = raw.strip()
+    if len(s) > max_len:
+        s = s[:max_len].rstrip()
+    return s
+
+
+def _sanitize_suggested_hashtags(raw) -> list:
+    if not isinstance(raw, list):
+        return []
+    cleaned = []
+    seen = set()
+    for tag in raw:
+        if not isinstance(tag, str):
+            continue
+        t = tag.strip()
+        if not t.startswith("#") or " " in t or len(t) > MAX_SUGGESTED_TAG_LEN:
+            continue
+        if t in seen:
+            continue
+        seen.add(t)
+        cleaned.append(t)
+        if len(cleaned) >= MAX_SUGGESTED_HASHTAGS:
+            break
+    return cleaned
 
 
 def _parse_result(parsed) -> dict | None:
@@ -113,11 +217,18 @@ def _parse_result(parsed) -> dict | None:
     is_good = parsed.get("is_good", True)
     if category not in VALID_CATEGORIES:
         return None
-    return {"category": category, "is_good": bool(is_good)}
+    return {
+        "category": category,
+        "is_good": bool(is_good),
+        "hashtag_actions": _sanitize_hashtag_actions(parsed.get("hashtag_actions")),
+        "source_text": _sanitize_short_text(parsed.get("source_text"), MAX_SOURCE_TEXT_LEN),
+        "source_line_raw": _sanitize_short_text(parsed.get("source_line_raw"), MAX_SOURCE_LINE_RAW_LEN),
+        "suggested_hashtags": _sanitize_suggested_hashtags(parsed.get("suggested_hashtags")),
+    }
 
 
 def classify_with_ai(text: str, has_media: bool):
-    """دسته‌بندی یک پست تکی - یک درخواست کامل به زنجیره‌ی مدل‌ها."""
+    """دسته‌بندی + پاک‌سازیِ یک پست تکی - یک درخواست کامل به زنجیره‌ی مدل‌ها."""
     media_desc = "عکس یا فیلم دارد" if has_media else "عکس یا فیلم ندارد"
     prompt = PROMPT_TEMPLATE.format(media_desc=media_desc, text=text)
 
@@ -136,8 +247,14 @@ def classify_with_ai(text: str, has_media: bool):
 def classify_batch_with_ai(items: list):
     """
     items: [{"text": ..., "has_media": bool}, ...] (حداکثر BATCH_SIZE تا)
-    خروجی: لیستی هم‌طول با items، هرکدوم یا {"category":..., "is_good":...}
-    یا None (اگه پارس یه عضو خاص شکست بخوره یا کل درخواست شکست بخوره).
+    نکته: "text" باید از قبل با text_utils.mechanical_pre_clean پاک‌سازیِ
+    مکانیکی شده باشه (استیکر/امضا حذف شده)، تا هشتگ‌هایی که مدل برمی‌گردونه
+    دقیقاً با متنِ نهایی هم‌خوانی داشته باشن.
+
+    خروجی: لیستی هم‌طول با items، هرکدوم یا دیکشنری کامل تصمیم‌ها یا None
+    (اگه پارس یه عضو خاص شکست بخوره یا کل درخواست شکست بخوره - در این
+    حالت، اون پست فقط با پاک‌سازیِ مکانیکی و بدون منبع/هشتگِ جدید منتشر
+    می‌شه، نه اینکه رد بشه یا خراب بشه).
     یک درخواست برای کل دسته - نه یکی به‌ازای هر پست.
     """
     if not items:
@@ -151,7 +268,7 @@ def classify_batch_with_ai(items: list):
 
     prompt = BATCH_PROMPT_TEMPLATE.format(n=len(items), items_block=items_block)
 
-    raw_text = ask_ai(prompt, timeout=60)
+    raw_text = ask_ai(prompt, timeout=90)
     if raw_text is None:
         return [None] * len(items)
 
