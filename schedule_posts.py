@@ -128,6 +128,23 @@ def send_book(client, entity, book_item: dict, schedule_dt: datetime.datetime):
     return sent.id
 
 
+def try_send_with_retries(pop_func, send_func, client, entity, slot_dt, max_attempts=3):
+    """
+    یک آیتم رو از صف برمی‌داره و ارسالش می‌کنه؛ اگه ارسال شکست خورد، آیتم
+    رو به حالت "استفاده‌نشده" برمی‌گردونه (تا برای دفعه‌ی بعد از دست نره) و
+    آیتم بعدی رو امتحان می‌کنه - تا max_attempts بار.
+    """
+    for _ in range(max_attempts):
+        item = pop_func()
+        if not item:
+            return None, None
+        msg_id = send_func(item, slot_dt)
+        if msg_id:
+            return item, msg_id
+        item["used"] = False  # ارسال شکست خورد - این آیتم رو از دست ندیم
+    return None, None
+
+
 def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, alternator, counters):
     tz = pytz.timezone(config.TIMEZONE)
     slot_dt = tz.localize(datetime.datetime.combine(day, datetime.time(hour=hour)))
@@ -136,47 +153,56 @@ def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, 
     if hour == 16:
         if already == 0:
             category = get_16_category(alternator)
-            item = pop_best(post_queue, category=category)
-            if item:
-                msg_id = send_post(client, entity, item, slot_dt)
-                if msg_id:
-                    counters["posts"] += 1
-                else:
-                    print(f"⚠️ پست دسته {category} به‌خاطر نبودن مدیا رد شد.")
+            item, msg_id = try_send_with_retries(
+                lambda: pop_best(post_queue, category=category),
+                lambda it, dt: send_post(client, entity, it, dt),
+                client, entity, slot_dt,
+            )
+            if msg_id:
+                counters["posts"] += 1
+            elif item is None:
+                print(f"⚠️ پست دسته {category} پیدا/ارسال نشد.")
 
     elif hour == 19:
         if already == 0:
-            hekayat_item = pop_best(post_queue, category=config.CATEGORY_HEKAYAT)
-            if hekayat_item:
-                msg_id = send_post(client, entity, hekayat_item, slot_dt)
-                if msg_id:
-                    counters["posts"] += 1
-                    filled_here += 1
-                else:
-                    print("⚠️ پست حکایت به‌خاطر مشکل مدیا رد شد.")
+            item, msg_id = try_send_with_retries(
+                lambda: pop_best(post_queue, category=config.CATEGORY_HEKAYAT),
+                lambda it, dt: send_post(client, entity, it, dt),
+                client, entity, slot_dt,
+            )
+            if msg_id:
+                counters["posts"] += 1
+                filled_here += 1
+            elif item is None:
+                print("⚠️ پست حکایت پیدا/ارسال نشد.")
         remaining = need - filled_here
         for j in range(max(remaining, 0)):
-            book_item = pop_next_book(book_queue)
-            if not book_item:
-                break
             idx = already + filled_here + j
             b_dt = slot_dt + datetime.timedelta(minutes=2 * idx)
-            msg_id = send_book(client, entity, book_item, b_dt)
-            if msg_id:
-                counters["books"] += 1
+            for _ in range(3):
+                book_item = pop_next_book(book_queue)
+                if not book_item:
+                    break
+                msg_id = send_book(client, entity, book_item, b_dt)
+                if msg_id:
+                    counters["books"] += 1
+                    break
+                book_item["used"] = False
+                break  # کتاب معمولاً یه مشکل دائمی داره (فایل خراب)، بی‌خودی حلقه نمی‌زنیم
 
     else:  # اسلات‌های عمومی (۱۰، ۱۳)
         for j in range(need):
-            item = pop_best(post_queue, exclude_categories=config.RESERVED_CATEGORIES)
-            if not item:
-                break
             idx = already + j
             g_dt = slot_dt + datetime.timedelta(minutes=2 * idx) if idx else slot_dt
-            msg_id = send_post(client, entity, item, g_dt)
+            item, msg_id = try_send_with_retries(
+                lambda: pop_best(post_queue, exclude_categories=config.RESERVED_CATEGORIES),
+                lambda it, dt: send_post(client, entity, it, dt),
+                client, entity, g_dt,
+            )
             if msg_id:
                 counters["posts"] += 1
-            else:
-                print("⚠️ پست عمومی به‌خاطر مشکل مدیا رد شد.")
+            elif item is None:
+                break  # دیگه چیزی توی صف عمومی نمونده
 
 
 def main():
