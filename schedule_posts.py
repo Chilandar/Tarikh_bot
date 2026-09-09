@@ -94,7 +94,7 @@ def has_media(item: dict) -> bool:
 
 
 def send_post(client, entity, item: dict, schedule_dt: datetime.datetime):
-        final_text = finalize_clean_text(item["text"])
+    final_text = finalize_clean_text(item["text"])
 
     if get_visible_content_length(item["text"]) < MIN_VISIBLE_CONTENT_LEN:
         return None  # محافظ نهایی: اگه عملاً محتوایی نمونده، پست نمی‌شه
