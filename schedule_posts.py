@@ -25,7 +25,7 @@ from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import clean_channel_post_text, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
 import quiz_web
 from telethon.tl.functions.messages import GetScheduledHistoryRequest, SendMediaRequest
-from telethon.tl.types import InputMediaPoll, Poll, PollAnswer
+from telethon.tl.types import InputMediaPoll, Poll, PollAnswer, TextWithEntities
 
 LOOKAHEAD_DAYS = 14
 ALTERNATOR_FILE = config.STATE_DIR + "/alternator.json"
@@ -142,12 +142,12 @@ def send_quiz_poll(client, entity, quiz: dict, schedule_dt: datetime.datetime):
     رأی‌دهنده‌ها خاموشه. توضیحاتِ کوییز همیشه دقیقاً امضای کاناله.
     """
     answers = [
-        PollAnswer(text=opt, option=bytes([i]))
+        PollAnswer(text=TextWithEntities(text=opt, entities=[]), option=bytes([i]))
         for i, opt in enumerate(quiz["options"])
     ]
     poll = Poll(
         id=random.randint(1, 2**31 - 1),
-        question=quiz["question"],
+        question=TextWithEntities(text=quiz["question"], entities=[]),
         answers=answers,
         quiz=True,
         multiple_choice=False,
