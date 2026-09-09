@@ -20,7 +20,7 @@ import pytz
 
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message
-from text_utils import clean_channel_post_text, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
+from text_utils import finalize_clean_text, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
 from telethon.tl.functions.messages import GetScheduledHistoryRequest
 
 LOOKAHEAD_DAYS = 14
@@ -94,7 +94,7 @@ def has_media(item: dict) -> bool:
 
 
 def send_post(client, entity, item: dict, schedule_dt: datetime.datetime):
-    final_text = clean_channel_post_text(item["text"])
+        final_text = finalize_clean_text(item["text"])
 
     if get_visible_content_length(item["text"]) < MIN_VISIBLE_CONTENT_LEN:
         return None  # محافظ نهایی: اگه عملاً محتوایی نمونده، پست نمی‌شه
