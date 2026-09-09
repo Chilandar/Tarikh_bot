@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 """
 اسکریپت اصلی زمان‌بندی. هر بار:
-  ۱. مستقیماً از خودِ تلگرام می‌پرسه الان واقعاً چند پیام توی هر (روز، ساعت)
+  ۱. اگه صفِ کوییز کم‌موجودی بود، خودکار (بدون نیاز به /scan) چندتا کوییزِ
+     جدید از quiz_web.build_daily_quizzes می‌سازه و به صف اضافه می‌کنه.
+  ۲. مستقیماً از خودِ تلگرام می‌پرسه الان واقعاً چند پیام توی هر (روز، ساعت)
      زمان‌بندی شده - نه از یک فایل محلی که با جابه‌جایی دستیِ شما به‌روز نمی‌مونه.
-  ۲. برای هر (روز، ساعت)ی که هنوز به ظرفیتش نرسیده، محتوای مناسب اضافه می‌کنه.
+  ۳. برای هر (روز، ساعت)ی که هنوز به ظرفیتش نرسیده، محتوای مناسب اضافه می‌کنه.
 
 قوانین ظرفیت هر ساعت (به‌وقت تهران):
   ۱۰:۰۰ و ۱۳:۰۰  -> ظرفیت ۱ (عمومی)
-  ۱۶:۰۰          -> ظرفیت ۱ (سخن بزرگان/تصاویر قدیم، یکی‌درمیون)
+  ۱۶:۰۰          -> ظرفیت ۱ (سخن بزرگان/تصاویر قدیم) + QUIZZES_PER_16_SLOT کوییز
   ۱۹:۰۰          -> ظرفیت ۱ + BOOKS_PER_SLOT (حکایت + کتاب)
   ۲۲:۰۰          -> دست‌نخورده، کاملاً متعلق به خود کاربره
 
@@ -16,15 +18,22 @@
 
 import datetime
 import os
+import random
 import pytz
 
 import config
+import quiz_web
 from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import clean_channel_post_text, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
-from telethon.tl.functions.messages import GetScheduledHistoryRequest
+from telethon.tl.functions.messages import GetScheduledHistoryRequest, SendMediaRequest
+from telethon.tl.types import InputMediaPoll, Poll, PollAnswer
 
 LOOKAHEAD_DAYS = 14
 ALTERNATOR_FILE = config.STATE_DIR + "/alternator.json"
+
+# اگه تعداد کوییزهای استفاده‌نشده‌ی توی صف از این کمتر بود، خودکار بیشتر می‌سازیم
+QUIZ_TOPUP_THRESHOLD = 6
+QUIZ_TOPUP_BATCH = 6
 
 
 def tz_now():
@@ -34,7 +43,9 @@ def tz_now():
 def hour_capacity(hour: int) -> int:
     if hour == 19:
         return 1 + config.BOOKS_PER_SLOT
-    return 1  # اسلات‌های عمومی و ۱۶ (۱۰، ۱۳، ۱۶)
+    if hour == 16:
+        return 1 + config.QUIZZES_PER_16_SLOT
+    return 1  # اسلات‌های عمومی (۱۰، ۱۳)
 
 
 def get_live_hour_counts(client, entity):
@@ -56,6 +67,29 @@ def get_live_hour_counts(client, entity):
     return counts
 
 
+def ensure_quiz_supply(quiz_queue: list) -> list:
+    """
+    اگه صفِ کوییز کم‌موجودی بود (کمتر از QUIZ_TOPUP_THRESHOLD تای استفاده‌نشده)،
+    خودکار یک دستهٔ جدید می‌سازه - این کاملاً مستقل از /scan شماست.
+    """
+    unused_count = sum(1 for q in quiz_queue if not q.get("used"))
+    if unused_count >= QUIZ_TOPUP_THRESHOLD:
+        return quiz_queue
+
+    print(f"🧩 صفِ کوییز کم‌موجودی داره ({unused_count} تا) - ساخت دستهٔ جدید...")
+    try:
+        new_quizzes = quiz_web.build_daily_quizzes(day=None, count=QUIZ_TOPUP_BATCH)
+    except Exception as e:
+        print(f"⚠️ ساخت کوییزهای جدید شکست خورد: {e}")
+        return quiz_queue
+
+    for q in new_quizzes:
+        q.setdefault("used", False)
+    quiz_queue.extend(new_quizzes)
+    print(f"🧩 {len(new_quizzes)} کوییز جدید به صف اضافه شد.")
+    return quiz_queue
+
+
 def pop_best(queue, category=None, exclude_categories=None):
     candidates = [
         item for item in queue
@@ -73,6 +107,14 @@ def pop_best(queue, category=None, exclude_categories=None):
 
 def pop_next_book(book_queue):
     for item in book_queue:
+        if not item.get("used"):
+            item["used"] = True
+            return item
+    return None
+
+
+def pop_next_quiz(quiz_queue):
+    for item in quiz_queue:
         if not item.get("used"):
             item["used"] = True
             return item
@@ -128,7 +170,57 @@ def send_book(client, entity, book_item: dict, schedule_dt: datetime.datetime):
     return sent.id
 
 
-def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, alternator, counters):
+def send_quiz(client, entity, quiz_item: dict, schedule_dt: datetime.datetime):
+    """
+    یک کوییز واقعی تلگرام می‌سازه. نکته‌ی مهم: امضای کانال (🏛️ @Tarikhgan)
+    توی متنِ سوال نمیاد (اونجا فقط خودِ سوال باید باشه) - توی فیلد
+    «توضیحاتِ اختیاری زیر سوال» (solution/explanation) گذاشته می‌شه، که
+    تلگرام بعد از جواب‌دادن کاربر نشونش می‌ده.
+    """
+    options = list(quiz_item["options"])
+    correct_index = quiz_item.get("correct_index", 0)
+
+    indices = list(range(len(options)))
+    random.shuffle(indices)
+    shuffled_options = [options[i] for i in indices]
+    new_correct_index = indices.index(correct_index)
+
+    answers = [
+        PollAnswer(text=opt, option=bytes([i]))
+        for i, opt in enumerate(shuffled_options)
+    ]
+    poll = Poll(
+        id=random.getrandbits(63),
+        question=quiz_item["question"],
+        answers=answers,
+        quiz=True,
+        public_voters=False,
+        multiple_choice=False,
+    )
+
+    explanation = (quiz_item.get("explanation") or "").strip()
+    solution_text = f"{explanation}\n\n{config.SIGNATURE}" if explanation else config.SIGNATURE
+    solution_text = solution_text[:200]  # محدودیت تلگرام برای این فیلد
+
+    media = InputMediaPoll(
+        poll=poll,
+        correct_answers=[bytes([new_correct_index])],
+        solution=solution_text,
+    )
+
+    result = client(SendMediaRequest(
+        peer=entity,
+        media=media,
+        message="",
+        schedule_date=schedule_dt,
+    ))
+    for update in result.updates:
+        if hasattr(update, "message") and hasattr(update.message, "id"):
+            return update.message.id
+    return None
+
+
+def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, quiz_queue, alternator, counters):
     tz = pytz.timezone(config.TIMEZONE)
     slot_dt = tz.localize(datetime.datetime.combine(day, datetime.time(hour=hour)))
     filled_here = 0
@@ -141,8 +233,26 @@ def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, 
                 msg_id = send_post(client, entity, item, slot_dt)
                 if msg_id:
                     counters["posts"] += 1
+                    filled_here += 1
                 else:
-                    print(f"⚠️ پست دسته {category} به‌خاطر نبودن مدیا رد شد.")
+                    item["used"] = False
+                    print(f"⚠️ ساعت {hour} روز {day}: ارسال پست دسته {category} شکست خورد.")
+            else:
+                print(f"⚠️ ساعت {hour} روز {day}: پستی از دسته‌ی {category} توی صف نبود.")
+        remaining = need - filled_here
+        for j in range(max(remaining, 0)):
+            idx = already + filled_here + j
+            q_dt = slot_dt + datetime.timedelta(minutes=2 * (idx + 1))
+            quiz_item = pop_next_quiz(quiz_queue)
+            if not quiz_item:
+                print(f"⚠️ ساعت {hour} روز {day}: کوییزی توی صف نبود.")
+                break
+            msg_id = send_quiz(client, entity, quiz_item, q_dt)
+            if msg_id:
+                counters["quizzes"] += 1
+            else:
+                quiz_item["used"] = False
+                print(f"⚠️ ساعت {hour} روز {day}: ارسال کوییز شکست خورد.")
 
     elif hour == 19:
         if already == 0:
@@ -153,22 +263,30 @@ def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, 
                     counters["posts"] += 1
                     filled_here += 1
                 else:
-                    print("⚠️ پست حکایت به‌خاطر مشکل مدیا رد شد.")
+                    hekayat_item["used"] = False
+                    print(f"⚠️ ساعت {hour} روز {day}: ارسال پست حکایت شکست خورد.")
+            else:
+                print(f"⚠️ ساعت {hour} روز {day}: پست حکایتی توی صف نبود.")
         remaining = need - filled_here
         for j in range(max(remaining, 0)):
-            book_item = pop_next_book(book_queue)
-            if not book_item:
-                break
             idx = already + filled_here + j
             b_dt = slot_dt + datetime.timedelta(minutes=2 * idx)
+            book_item = pop_next_book(book_queue)
+            if not book_item:
+                print(f"⚠️ ساعت {hour} روز {day}: کتابی توی صف نبود.")
+                break
             msg_id = send_book(client, entity, book_item, b_dt)
             if msg_id:
                 counters["books"] += 1
+            else:
+                book_item["used"] = False
+                print(f"⚠️ ساعت {hour} روز {day}: ارسال کتاب شکست خورد.")
 
     else:  # اسلات‌های عمومی (۱۰، ۱۳)
         for j in range(need):
             item = pop_best(post_queue, exclude_categories=config.RESERVED_CATEGORIES)
             if not item:
+                print(f"⚠️ ساعت {hour} روز {day}: هیچ پستِ عمومی‌ای توی صف نبود.")
                 break
             idx = already + j
             g_dt = slot_dt + datetime.timedelta(minutes=2 * idx) if idx else slot_dt
@@ -176,15 +294,19 @@ def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, 
             if msg_id:
                 counters["posts"] += 1
             else:
-                print("⚠️ پست عمومی به‌خاطر مشکل مدیا رد شد.")
+                item["used"] = False
+                print(f"⚠️ ساعت {hour} روز {day}: ارسال پست عمومی شکست خورد.")
 
 
 def main():
     post_queue = load_json(config.POST_QUEUE_FILE, [])
     book_queue = load_json(config.BOOK_QUEUE_FILE, [])
+    quiz_queue = load_json(config.QUIZ_QUEUE_FILE, [])
     alternator = load_json(ALTERNATOR_FILE, {})
 
-    counters = {"posts": 0, "books": 0}
+    quiz_queue = ensure_quiz_supply(quiz_queue)
+
+    counters = {"posts": 0, "books": 0, "quizzes": 0}
 
     with get_client() as client:
         entity = client.get_entity(config.TARGET_CHANNEL)
@@ -211,15 +333,16 @@ def main():
                     continue
 
                 fill_hour(client, entity, day, hour, already, need,
-                          post_queue, book_queue, alternator, counters)
+                          post_queue, book_queue, quiz_queue, alternator, counters)
 
     save_json(config.POST_QUEUE_FILE, post_queue)
     save_json(config.BOOK_QUEUE_FILE, book_queue)
+    save_json(config.QUIZ_QUEUE_FILE, quiz_queue)
     save_json(ALTERNATOR_FILE, alternator)
 
     summary = (
-        f"وضعیت زمان‌بندی به‌روزرسانی شد. {counters['posts']} پست و {counters['books']} کتاب جدید "
-        f"زمان‌بندی شد (بر اساس شمارش زنده‌ی تلگرام)."
+        f"وضعیت زمان‌بندی به‌روزرسانی شد. {counters['posts']} پست، {counters['books']} کتاب، "
+        f"{counters['quizzes']} کوییز جدید زمان‌بندی شد (بر اساس شمارش زنده‌ی تلگرام)."
     )
     print(summary)
     if any(counters.values()):
