@@ -29,7 +29,7 @@ import config
 from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import clean_channel_post_text, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
 from quiz_web import build_daily_quizzes
-from telethon.tl.functions.messages import GetScheduledHistoryRequest
+from telethon.tl.functions.messages import GetScheduledHistoryRequest, SendMediaRequest
 from telethon.tl.types import Poll, PollAnswer, InputMediaPoll, TextWithEntities
 
 LOOKAHEAD_DAYS = 14
@@ -143,44 +143,32 @@ def send_book(client, entity, book_item: dict, schedule_dt: datetime.datetime):
 def send_quiz(client, entity, quiz: dict, schedule_dt: datetime.datetime):
     """
     یک کوییزِ چهارگزینه‌ای واقعی (Poll از نوع quiz) می‌فرسته. امضای کانال
-    (🏛️ @Tarikhgan) توی فیلدِ جدیدِ "description" ی پول گذاشته می‌شه - همونی
-    که همیشه، بدون نیاز به جواب‌دادن، درست زیرِ سوال نشون داده می‌شه (نه توی
-    "solution" که فقط بعد از جواب‌دادن ظاهر می‌شه - عمداً از اون استفاده
-    نمی‌کنیم).
-
-    نکته: فیلدِ description یک ویژگیِ خیلی تازه‌ی تلگرامه. اگه نسخه‌ی
-    Telethon نصب‌شده هنوز ازش پشتیبانی نکنه، بدونِ امضا (ولی بدون کرش) پست
-    می‌شه - چون سالم‌فرستادنِ خودِ کوییز مهم‌تر از داشتنِ امضاست.
+    (🏛️ @Tarikhgan) توی فیلدِ رسمیِ "solution" گذاشته می‌شه - طبق مستندات
+    خودِ تلگرام (core.telegram.org/constructor/inputMediaPoll)، این همون
+    فیلدیه که فقط *بعد از پاسخ‌دادن* به کاربر نشون داده می‌شه. Poll خودش
+    هیچ فیلد دیگه‌ای برای این کار نداره.
     """
     answers = [
         PollAnswer(text=TextWithEntities(text=opt, entities=[]), option=bytes([i]))
         for i, opt in enumerate(quiz["options"])
     ]
-
-    try:
-        poll = Poll(
-            id=random.getrandbits(63),
-            question=TextWithEntities(text=quiz["question"], entities=[]),
-            answers=answers,
-            quiz=True,
-            description=TextWithEntities(text=config.SIGNATURE, entities=[]),
-        )
-    except TypeError:
-        # این نسخه‌ی Telethon هنوز فیلدِ description رو نمی‌شناسه
-        print("⚠️ این نسخه‌ی Telethon از description پشتیبانی نمی‌کنه - کوییز بدون امضا فرستاده می‌شه.")
-        poll = Poll(
-            id=random.getrandbits(63),
-            question=TextWithEntities(text=quiz["question"], entities=[]),
-            answers=answers,
-            quiz=True,
-        )
-
+    poll = Poll(
+        id=random.getrandbits(63),
+        question=TextWithEntities(text=quiz["question"], entities=[]),
+        answers=answers,
+        quiz=True,
+    )
     media = InputMediaPoll(
         poll=poll,
         correct_answers=[bytes([quiz["correct_index"]])],
+        solution=config.SIGNATURE,
+        solution_entities=[],
     )
-    sent = client.send_message(entity, file=media, schedule=schedule_dt)
-    return sent.id
+    result = client(SendMediaRequest(peer=entity, media=media, message="", schedule_date=schedule_dt))
+    for upd in result.updates:
+        if hasattr(upd, "message") and hasattr(upd.message, "id"):
+            return upd.message.id
+    return None
 
 
 def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, alternator, counters):
