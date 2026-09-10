@@ -3,33 +3,33 @@
 دسته‌بندی و ارزیابی کیفیت پست‌ها با هوش مصنوعی (Gemini/Grok - رایگان). اگه
 هیچ کلیدی تنظیم نباشه یا همه‌ی مدل‌ها شکست بخورن، None برمی‌گرده و کد اصلی
 به روش کلیدواژه‌ای (ضعیف‌تر) برمی‌گرده.
-
+ 
 تماسِ واقعی با مدل‌ها (و fallback بین چند کلید/سرویس) داخل ai_providers.py
 انجام می‌شه - این فایل فقط پرامپت‌ها و پردازش خروجی رو نگه می‌داره.
-
+ 
 برای جلوگیری از محدودیت نرخ، به‌جای یک درخواست به‌ازای هر پست، چند پست با
-هم در یک درخواست فرستاده می‌شن (classify_batch_with_ai). تابع تکی
-(classify_with_ai) هنوز هست و برای جاهای دیگه (مثل quiz_extract) کار
-می‌کنه، ولی scan_history.py از نسخه‌ی دسته‌ای استفاده می‌کنه.
+هم در یک درخواست فرستاده می‌شن (classify_batch_with_ai) - این همیشه باید
+همین‌طور بمونه، حتی اگه بعداً چیز دیگه‌ای به این فایل اضافه شد. تابع تکی
+(classify_with_ai) هم برای جاهای دیگه (مثل quiz_extract) نگه داشته شده.
 """
-
+ 
 import json
-
+ 
 from ai_providers import ask_ai, strip_json_fence
-
+ 
 VALID_CATEGORIES = {"sokhan_bozorgan", "aks_iran_qadim", "hekayat_dastan_sher", "general"}
-
+ 
 BATCH_SIZE = 15  # چند پست در هر درخواست فرستاده بشه
-
-
+ 
+ 
 CATEGORY_RULES = """تو دستیار دسته‌بندی محتوا برای یک کانال تلگرامی تاریخی/فرهنگی به اسم
 «تاریخگان» هستی. این کانال پست‌هایی درباره‌ی تاریخ، فرهنگ، ادبیات و تصاویر
 قدیمی منتشر می‌کنه. باید هر متنی که میدم رو بر اساس تعریف‌های دقیقی که میدم
 بررسی کنی و دو تصمیم بگیری: این پست به کدوم دسته تعلق داره، و آیا اصلاً ارزش
 بازنشر داره یا نه.
-
+ 
 === دسته‌ها (دقیقاً به همین ترتیب اولویت بررسی کن) ===
-
+ 
 ۱. sokhan_bozorgan (سخن بزرگان):
 هر پستی که یک نقل‌قول یا جمله‌ی حکیمانه/فکری رو به یک شخص واقعی و مشخص
 (نه لزوماً ایرانی) نسبت می‌ده - فیلسوف، نویسنده، شاعر معاصر (نه شاعر
@@ -39,7 +39,7 @@ CATEGORY_RULES = """تو دستیار دسته‌بندی محتوا برای ی
 کوچیکی نیستی؛ اگه اسم شخصی اومد که می‌دونی واقعاً کیه (حتی اگه خیلی معروف
 نباشه) و جمله‌ای به‌عنوان سخن او نقل شده، این دسته‌ست. الگوی رایج: ابتدا
 خودِ جمله میاد، در پایان اسم گوینده.
-
+ 
 ۲. hekayat_dastan_sher (حکایت / داستان / شعر):
 - هر حکایت یا داستان کوتاه روایی، حتی بدون نام نویسنده و بدون کلمه‌ی
   صریح «حکایت» - این‌ها رو از روی لحن و ساختار روایی تشخیص بده: شروع با
@@ -50,7 +50,7 @@ CATEGORY_RULES = """تو دستیار دسته‌بندی محتوا برای ی
 - سخنانی که به شاعران/عارفان/حکایت‌گویان کلاسیک فارسی نسبت داده شده
   (حافظ، سعدی، مولوی، خیام، عبید زاکانی، خواجه عبدالله انصاری، عطار،
   و مشابه این‌ها) هم همینجا قرار می‌گیره، نه در سخن بزرگان.
-
+ 
 ۳. aks_iran_qadim (تصویر تاریخی):
 توجه: این دسته فقط مخصوص ایران نیست - هر عکس یا فیلم تاریخی از هر تمدن،
 دوره، یا کشوری (مثلاً یک کوزه‌ی ایلامی، یک زن دوره‌ی قاجار، یک بنای باستانی
@@ -60,12 +60,12 @@ CATEGORY_RULES = """تو دستیار دسته‌بندی محتوا برای ی
 (مثلاً اسم یک موزه، شهر، کشور، دوره‌ی تاریخی، یا یک سال مشخص). اگه پستی
 عکس داره ولی متنش طولانی و روایی/تحلیلیه (نه صرفاً توصیف تصویر)، اینجا
 جاش نیست - عمومی حساب می‌شه.
-
+ 
 ۴. general (عمومی):
 هر چیز دیگه‌ای که در بالا نگنجه - مثلاً یک متن تحلیلی/توضیحی بلندتر
 درباره‌ی یک رویداد یا موضوع تاریخی، بدون نقل‌قول مشخص و بدون ساختار روایی
 حکایت‌گونه.
-
+ 
 === ارزیابی کیفیت (is_good) ===
 پست رو false علامت بزن اگه:
 - عملاً بدون توضیح معناداره (فقط عکس با یک کلمه یا بدون هیچ متنی).
@@ -76,90 +76,90 @@ CATEGORY_RULES = """تو دستیار دسته‌بندی محتوا برای ی
   شده، بدون هیچ زاویه یا جزئیات خاص).
 در غیر این صورت، اگه محتوا معنادار، جذاب، و مرتبط با روحیه‌ی یک کانال
 تاریخی/فرهنگیه، true بذار."""
-
-
+ 
+ 
 PROMPT_TEMPLATE = CATEGORY_RULES + """
-
+ 
 === ورودی ===
 این پست {media_desc}.
-
+ 
 متن پست:
 \"\"\"{text}\"\"\"
-
+ 
 === خروجی ===
 فقط و فقط یک JSON خام (بدون ```json و بدون هیچ توضیح اضافه‌ای) دقیقاً با
 این فرمت برگردون:
 {{"category": "یکی از چهار مقدار: sokhan_bozorgan / aks_iran_qadim / hekayat_dastan_sher / general", "is_good": true یا false}}"""
-
-
+ 
+ 
 BATCH_PROMPT_TEMPLATE = CATEGORY_RULES + """
-
+ 
 === ورودی ===
 در ادامه {n} پست جداگانه میاد، هرکدوم با یک شماره. برای *هرکدوم به‌طور
 مستقل* (بدون ربط‌دادن به بقیه) دسته و is_good رو طبق همون قوانین بالا تعیین
 کن.
-
+ 
 {items_block}
-
+ 
 === خروجی ===
 فقط و فقط یک آرایه‌ی JSON خام برگردون (بدون ```json و بدون هیچ توضیح
 اضافه‌ای) - دقیقاً {n} عضو، دقیقاً به همون ترتیب شماره‌های بالا. هر عضو باید
 دقیقاً این شکل باشه:
 [{{"category": "...", "is_good": true}}, {{"category": "...", "is_good": false}}, ...]"""
-
-
+ 
+ 
 def _parse_result(parsed) -> dict | None:
     category = parsed.get("category")
     is_good = parsed.get("is_good", True)
     if category not in VALID_CATEGORIES:
         return None
     return {"category": category, "is_good": bool(is_good)}
-
-
+ 
+ 
 def classify_with_ai(text: str, has_media: bool):
     """دسته‌بندی یک پست تکی - یک درخواست کامل به زنجیره‌ی مدل‌ها."""
     media_desc = "عکس یا فیلم دارد" if has_media else "عکس یا فیلم ندارد"
     prompt = PROMPT_TEMPLATE.format(media_desc=media_desc, text=text)
-
+ 
     raw_text = ask_ai(prompt, timeout=20)
     if raw_text is None:
         return None
-
+ 
     try:
         parsed = json.loads(strip_json_fence(raw_text))
         return _parse_result(parsed)
     except Exception as e:
         print(f"⚠️ دسته‌بندی با هوش مصنوعی شکست خورد: {e} - به روش کلیدواژه‌ای برمی‌گردیم.")
         return None
-
-
+ 
+ 
 def classify_batch_with_ai(items: list):
     """
     items: [{"text": ..., "has_media": bool}, ...] (حداکثر BATCH_SIZE تا)
     خروجی: لیستی هم‌طول با items، هرکدوم یا {"category":..., "is_good":...}
     یا None (اگه پارس یه عضو خاص شکست بخوره یا کل درخواست شکست بخوره).
-    یک درخواست برای کل دسته - نه یکی به‌ازای هر پست.
+    همیشه یک درخواست برای کل دسته - نه یکی به‌ازای هر پست.
     """
     if not items:
         return []
-
+ 
     lines = []
     for i, it in enumerate(items, start=1):
         media_desc = "عکس یا فیلم دارد" if it["has_media"] else "عکس یا فیلم ندارد"
         lines.append(f'{i}. [{media_desc}]\n"""{it["text"]}"""')
     items_block = "\n\n".join(lines)
-
+ 
     prompt = BATCH_PROMPT_TEMPLATE.format(n=len(items), items_block=items_block)
-
+ 
     raw_text = ask_ai(prompt, timeout=60)
     if raw_text is None:
         return [None] * len(items)
-
+ 
     try:
         parsed_list = json.loads(strip_json_fence(raw_text))
         if not isinstance(parsed_list, list):
             raise ValueError("خروجی مدل آرایه نبود")
-
+ 
         results = []
         for i in range(len(items)):
             if i < len(parsed_list) and isinstance(parsed_list[i], dict):
@@ -170,3 +170,4 @@ def classify_batch_with_ai(items: list):
     except Exception as e:
         print(f"⚠️ دسته‌بندیِ دسته‌ای با هوش مصنوعی شکست خورد: {e} - همه‌ی این دسته به روش کلیدواژه‌ای می‌رن.")
         return [None] * len(items)
+ 
