@@ -2,26 +2,35 @@
 """
 اسکریپت اصلی زمان‌بندی. هر بار:
   ۱. مستقیماً از خودِ تلگرام می‌پرسه الان واقعاً چند پیام توی هر (روز، ساعت)
-     زمان‌بندی شده - نه از یک فایل محلی که با جابه‌جایی دستیِ شما به‌روز نمی‌مونه.
+     زمان‌بندی شده - نه از یک فایل محلی که با جابه‌جایی/حذفِ دستیِ شما به‌روز نمی‌مونه.
   ۲. برای هر (روز، ساعت)ی که هنوز به ظرفیتش نرسیده، محتوای مناسب اضافه می‌کنه.
 
 قوانین ظرفیت هر ساعت (به‌وقت تهران):
   ۱۰:۰۰ و ۱۳:۰۰  -> ظرفیت ۱ (عمومی)
-  ۱۶:۰۰          -> ظرفیت ۱ (سخن بزرگان/تصاویر قدیم، یکی‌درمیون)
+  ۱۶:۰۰          -> ظرفیت ۱ (سخن بزرگان/تصاویر قدیم، یکی‌درمیون) + QUIZZES_PER_16_SLOT کوییز
   ۱۹:۰۰          -> ظرفیت ۱ + BOOKS_PER_SLOT (حکایت + کتاب)
   ۲۲:۰۰          -> دست‌نخورده، کاملاً متعلق به خود کاربره
+
+نکته‌ی مهمِ کوییز: چون شمارشِ «چند تا الان زمان‌بندی شده» مستقیم از خودِ
+تلگرام خونده می‌شه (نه از یک فایلِ محلی)، اگه شما دستی یک کوییزِ زمان‌بندی‌شده
+رو حذف کنید، دفعه‌ی بعد که این اسکریپت اجرا بشه خودش می‌بینه جا خالی شده و
+یک کوییزِ جدید (از یک مقاله‌ی تازه‌ی ویکی‌پدیا) می‌سازه و جاش می‌ذاره - کاملاً
+خودکار، بدون نیاز به /scan یا هیچ دستورِ دیگه‌ای.
 
 اجرا: python schedule_posts.py
 """
 
 import datetime
 import os
+import random
 import pytz
 
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import clean_channel_post_text, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
+from quiz_web import build_daily_quizzes
 from telethon.tl.functions.messages import GetScheduledHistoryRequest
+from telethon.tl.types import Poll, PollAnswer, InputMediaPoll, TextWithEntities
 
 LOOKAHEAD_DAYS = 14
 ALTERNATOR_FILE = config.STATE_DIR + "/alternator.json"
@@ -34,14 +43,17 @@ def tz_now():
 def hour_capacity(hour: int) -> int:
     if hour == 19:
         return 1 + config.BOOKS_PER_SLOT
-    return 1  # اسلات‌های عمومی و ۱۶ (۱۰، ۱۳، ۱۶)
+    if hour == 16:
+        return 1 + config.QUIZZES_PER_16_SLOT
+    return 1  # اسلات‌های عمومی (۱۰، ۱۳)
 
 
 def get_live_hour_counts(client, entity):
     """
     تنها منبع حقیقتِ «این اسلات پره یا نه»: می‌شمره الان واقعاً چند پیام توی
     هر (روز، ساعت) روی تلگرام زمان‌بندی شده - چه ربات گذاشته باشتش چه خودِ
-    کاربر دستی جابه‌جا/اضافه کرده باشه.
+    کاربر دستی جابه‌جا/اضافه/حذف کرده باشه. همین باعث می‌شه حذفِ دستیِ یک
+    کوییز یا پست، خودش باعثِ پرشدنِ دوباره‌ی جاش توی اجرای بعدی بشه.
     """
     result = client(GetScheduledHistoryRequest(peer=entity, hash=0))
     tz = pytz.timezone(config.TIMEZONE)
@@ -128,6 +140,49 @@ def send_book(client, entity, book_item: dict, schedule_dt: datetime.datetime):
     return sent.id
 
 
+def send_quiz(client, entity, quiz: dict, schedule_dt: datetime.datetime):
+    """
+    یک کوییزِ چهارگزینه‌ای واقعی (Poll از نوع quiz) می‌فرسته. امضای کانال
+    (🏛️ @Tarikhgan) توی فیلدِ جدیدِ "description" ی پول گذاشته می‌شه - همونی
+    که همیشه، بدون نیاز به جواب‌دادن، درست زیرِ سوال نشون داده می‌شه (نه توی
+    "solution" که فقط بعد از جواب‌دادن ظاهر می‌شه - عمداً از اون استفاده
+    نمی‌کنیم).
+
+    نکته: فیلدِ description یک ویژگیِ خیلی تازه‌ی تلگرامه. اگه نسخه‌ی
+    Telethon نصب‌شده هنوز ازش پشتیبانی نکنه، بدونِ امضا (ولی بدون کرش) پست
+    می‌شه - چون سالم‌فرستادنِ خودِ کوییز مهم‌تر از داشتنِ امضاست.
+    """
+    answers = [
+        PollAnswer(text=TextWithEntities(text=opt, entities=[]), option=bytes([i]))
+        for i, opt in enumerate(quiz["options"])
+    ]
+
+    try:
+        poll = Poll(
+            id=random.getrandbits(63),
+            question=TextWithEntities(text=quiz["question"], entities=[]),
+            answers=answers,
+            quiz=True,
+            description=TextWithEntities(text=config.SIGNATURE, entities=[]),
+        )
+    except TypeError:
+        # این نسخه‌ی Telethon هنوز فیلدِ description رو نمی‌شناسه
+        print("⚠️ این نسخه‌ی Telethon از description پشتیبانی نمی‌کنه - کوییز بدون امضا فرستاده می‌شه.")
+        poll = Poll(
+            id=random.getrandbits(63),
+            question=TextWithEntities(text=quiz["question"], entities=[]),
+            answers=answers,
+            quiz=True,
+        )
+
+    media = InputMediaPoll(
+        poll=poll,
+        correct_answers=[bytes([quiz["correct_index"]])],
+    )
+    sent = client.send_message(entity, file=media, schedule=schedule_dt)
+    return sent.id
+
+
 def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, alternator, counters):
     tz = pytz.timezone(config.TIMEZONE)
     slot_dt = tz.localize(datetime.datetime.combine(day, datetime.time(hour=hour)))
@@ -141,8 +196,22 @@ def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, 
                 msg_id = send_post(client, entity, item, slot_dt)
                 if msg_id:
                     counters["posts"] += 1
+                    filled_here += 1
                 else:
                     print(f"⚠️ پست دسته {category} به‌خاطر نبودن مدیا رد شد.")
+
+        remaining_quizzes = need - filled_here
+        if remaining_quizzes > 0:
+            quizzes = build_daily_quizzes(day, count=remaining_quizzes)
+            if len(quizzes) < remaining_quizzes:
+                print(f"⚠️ فقط {len(quizzes)} از {remaining_quizzes} کوییزِ لازم ساخته شد "
+                      f"(ویکی‌پدیا/هوش مصنوعی کم‌آوردن) - بقیه اجرای بعدی جبران می‌شه.")
+            for j, quiz in enumerate(quizzes):
+                idx = already + filled_here + j
+                q_dt = slot_dt + datetime.timedelta(minutes=2 * idx)
+                msg_id = send_quiz(client, entity, quiz, q_dt)
+                if msg_id:
+                    counters["quizzes"] += 1
 
     elif hour == 19:
         if already == 0:
@@ -184,7 +253,7 @@ def main():
     book_queue = load_json(config.BOOK_QUEUE_FILE, [])
     alternator = load_json(ALTERNATOR_FILE, {})
 
-    counters = {"posts": 0, "books": 0}
+    counters = {"posts": 0, "books": 0, "quizzes": 0}
 
     with get_client() as client:
         entity = client.get_entity(config.TARGET_CHANNEL)
@@ -218,8 +287,8 @@ def main():
     save_json(ALTERNATOR_FILE, alternator)
 
     summary = (
-        f"وضعیت زمان‌بندی به‌روزرسانی شد. {counters['posts']} پست و {counters['books']} کتاب جدید "
-        f"زمان‌بندی شد (بر اساس شمارش زنده‌ی تلگرام)."
+        f"وضعیت زمان‌بندی به‌روزرسانی شد. {counters['posts']} پست، {counters['books']} کتاب، "
+        f"و {counters['quizzes']} کوییز جدید زمان‌بندی شد (بر اساس شمارش زنده‌ی تلگرام)."
     )
     print(summary)
     if any(counters.values()):
