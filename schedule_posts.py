@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
 """
 اسکریپت اصلی زمان‌بندی. هر بار:
-  ۱. مستقیماً از خودِ تلگرام می‌پرسه الان واقعاً چند پیام توی هر (روز، ساعت)
-     زمان‌بندی شده - نه از یک فایل محلی که با جابه‌جایی/حذفِ دستیِ شما به‌روز نمی‌مونه.
-  ۲. برای هر (روز، ساعت)ی که هنوز به ظرفیتش نرسیده، محتوای مناسب اضافه می‌کنه.
+  ۱. مستقیماً از خودِ تلگرام می‌پرسه الان واقعاً چند پیام (و از چه نوعی -
+     کتاب/کوییز/عادی) توی هر (روز، ساعت) زمان‌بندی شده - نه از یک فایل محلی
+     که با جابه‌جایی/حذفِ دستیِ شما به‌روز نمی‌مونه.
+  ۲. برای هر (روز، ساعت)، هر نوع محتوا (پست عادی، کوییز، کتاب) رو *جداگانه*
+     تا ظرفیتِ خودش پر می‌کنه - نه یک عدد ترکیبی، تا هیچ‌وقت مثلاً به‌خاطرِ
+     خالی‌موندنِ اسلاتِ حکایت، یک کتابِ اضافه (سوم) جایگزینش نشه.
 
 قوانین ظرفیت هر ساعت (به‌وقت تهران):
-  ۱۰:۰۰ و ۱۳:۰۰  -> ظرفیت ۱ (عمومی)
-  ۱۶:۰۰          -> ظرفیت ۱ (سخن بزرگان/تصاویر قدیم، یکی‌درمیون) + QUIZZES_PER_16_SLOT کوییز
-  ۱۹:۰۰          -> ظرفیت ۱ + BOOKS_PER_SLOT (حکایت + کتاب)
+  ۱۰:۰۰ و ۱۳:۰۰  -> ۱ پستِ عمومی
+  ۱۶:۰۰          -> ۱ پست (سخن بزرگان/تصاویر قدیم) + QUIZZES_PER_16_SLOT کوییز
+  ۱۹:۰۰          -> ۱ پستِ حکایت + BOOKS_PER_SLOT کتاب
   ۲۲:۰۰          -> دست‌نخورده، کاملاً متعلق به خود کاربره
 
-نکته‌ی مهمِ کوییز: چون شمارشِ «چند تا الان زمان‌بندی شده» مستقیم از خودِ
-تلگرام خونده می‌شه (نه از یک فایلِ محلی)، اگه شما دستی یک کوییزِ زمان‌بندی‌شده
-رو حذف کنید، دفعه‌ی بعد که این اسکریپت اجرا بشه خودش می‌بینه جا خالی شده و
-یک کوییزِ جدید (از یک مقاله‌ی تازه‌ی ویکی‌پدیا) می‌سازه و جاش می‌ذاره - کاملاً
-خودکار، بدون نیاز به /scan یا هیچ دستورِ دیگه‌ای.
+نکته‌ی مهمِ کوییز: چون شمارش مستقیم از خودِ تلگرام خونده می‌شه، اگه شما دستی
+یک کوییزِ زمان‌بندی‌شده رو حذف کنید، دفعه‌ی بعد خودش می‌بینه جا خالی شده و
+یک کوییزِ جدید می‌سازه - کاملاً خودکار، بدون نیاز به /scan.
 
 اجرا: python schedule_posts.py
 """
@@ -40,20 +41,13 @@ def tz_now():
     return datetime.datetime.now(pytz.timezone(config.TIMEZONE))
 
 
-def hour_capacity(hour: int) -> int:
-    if hour == 19:
-        return 1 + config.BOOKS_PER_SLOT
-    if hour == 16:
-        return 1 + config.QUIZZES_PER_16_SLOT
-    return 1  # اسلات‌های عمومی (۱۰، ۱۳)
-
-
 def get_live_hour_counts(client, entity):
     """
-    تنها منبع حقیقتِ «این اسلات پره یا نه»: می‌شمره الان واقعاً چند پیام توی
-    هر (روز، ساعت) روی تلگرام زمان‌بندی شده - چه ربات گذاشته باشتش چه خودِ
-    کاربر دستی جابه‌جا/اضافه/حذف کرده باشه. همین باعث می‌شه حذفِ دستیِ یک
-    کوییز یا پست، خودش باعثِ پرشدنِ دوباره‌ی جاش توی اجرای بعدی بشه.
+    برای هر (روز، ساعت)، تعداد پیام‌های *هر نوع* رو جدا می‌شمره - نه یک عددِ
+    کلی. "document" یعنی کتاب (فایل)، "poll" یعنی کوییز، "other" یعنی هر
+    پستِ معمولی (متن/عکس/فیلم - یعنی سخن‌بزرگان/تصاویرقدیم/حکایت/عمومی).
+    این تفکیک لازمه تا مثلاً خالی‌موندنِ جای حکایت، اشتباهی با یک کتابِ
+    اضافه پر نشه.
     """
     result = client(GetScheduledHistoryRequest(peer=entity, hash=0))
     tz = pytz.timezone(config.TIMEZONE)
@@ -64,7 +58,13 @@ def get_live_hour_counts(client, entity):
         if dt <= now:
             continue
         key = (dt.date(), dt.hour)
-        counts[key] = counts.get(key, 0) + 1
+        entry = counts.setdefault(key, {"document": 0, "poll": 0, "other": 0})
+        if getattr(m, "document", None):
+            entry["document"] += 1
+        elif getattr(m, "poll", None):
+            entry["poll"] += 1
+        else:
+            entry["other"] += 1
     return counts
 
 
@@ -109,7 +109,7 @@ def send_post(client, entity, item: dict, schedule_dt: datetime.datetime):
     final_text = clean_channel_post_text(item["text"])
 
     if get_visible_content_length(item["text"]) < MIN_VISIBLE_CONTENT_LEN:
-        return None  # محافظ نهایی: اگه عملاً محتوایی نمونده، پست نمی‌شه
+        return None
 
     if has_media(item):
         source_msg = client.get_messages(item["channel"], ids=item["message_id"])
@@ -141,13 +141,6 @@ def send_book(client, entity, book_item: dict, schedule_dt: datetime.datetime):
 
 
 def send_quiz(client, entity, quiz: dict, schedule_dt: datetime.datetime):
-    """
-    یک کوییزِ چهارگزینه‌ای واقعی (Poll از نوع quiz) می‌فرسته. امضای کانال
-    (🏛️ @Tarikhgan) توی فیلدِ رسمیِ "solution" گذاشته می‌شه - طبق مستندات
-    خودِ تلگرام (core.telegram.org/constructor/inputMediaPoll)، این همون
-    فیلدیه که فقط *بعد از پاسخ‌دادن* به کاربر نشون داده می‌شه. Poll خودش
-    هیچ فیلد دیگه‌ای برای این کار نداره.
-    """
     answers = [
         PollAnswer(text=TextWithEntities(text=opt, entities=[]), option=bytes([i]))
         for i, opt in enumerate(quiz["options"])
@@ -171,69 +164,89 @@ def send_quiz(client, entity, quiz: dict, schedule_dt: datetime.datetime):
     return None
 
 
-def fill_hour(client, entity, day, hour, already, need, post_queue, book_queue, alternator, counters):
+def fill_hour(client, entity, day, hour, counts, post_queue, book_queue, alternator, counters):
     tz = pytz.timezone(config.TIMEZONE)
     slot_dt = tz.localize(datetime.datetime.combine(day, datetime.time(hour=hour)))
-    filled_here = 0
+
+    other_have = counts.get("other", 0)
+    document_have = counts.get("document", 0)
+    poll_have = counts.get("poll", 0)
 
     if hour == 16:
-        if already == 0:
+        if other_have < 1:
             category = get_16_category(alternator)
             item = pop_best(post_queue, category=category)
             if item:
                 msg_id = send_post(client, entity, item, slot_dt)
                 if msg_id:
                     counters["posts"] += 1
-                    filled_here += 1
                 else:
-                    print(f"⚠️ پست دسته {category} به‌خاطر نبودن مدیا رد شد.")
+                    item["used"] = False
+                    print(f"⚠️ ساعت {hour} روز {day}: ارسال پست دسته {category} شکست خورد.")
+            else:
+                print(f"⚠️ ساعت {hour} روز {day}: پستی از دسته‌ی {category} توی صف نبود.")
 
-        remaining_quizzes = need - filled_here
-        if remaining_quizzes > 0:
-            quizzes = build_daily_quizzes(day, count=remaining_quizzes)
-            if len(quizzes) < remaining_quizzes:
-                print(f"⚠️ فقط {len(quizzes)} از {remaining_quizzes} کوییزِ لازم ساخته شد "
-                      f"(ویکی‌پدیا/هوش مصنوعی کم‌آوردن) - بقیه اجرای بعدی جبران می‌شه.")
+        need_quizzes = config.QUIZZES_PER_16_SLOT - poll_have
+        if need_quizzes > 0:
+            quizzes = build_daily_quizzes(day, count=need_quizzes)
+            if len(quizzes) < need_quizzes:
+                print(f"⚠️ ساعت {hour} روز {day}: فقط {len(quizzes)} از {need_quizzes} کوییزِ لازم ساخته شد.")
             for j, quiz in enumerate(quizzes):
-                idx = already + filled_here + j
-                q_dt = slot_dt + datetime.timedelta(minutes=2 * idx)
+                q_dt = slot_dt + datetime.timedelta(minutes=2 * (poll_have + j + 1))
                 msg_id = send_quiz(client, entity, quiz, q_dt)
                 if msg_id:
                     counters["quizzes"] += 1
 
     elif hour == 19:
-        if already == 0:
+        if other_have < 1:
             hekayat_item = pop_best(post_queue, category=config.CATEGORY_HEKAYAT)
             if hekayat_item:
                 msg_id = send_post(client, entity, hekayat_item, slot_dt)
                 if msg_id:
                     counters["posts"] += 1
-                    filled_here += 1
                 else:
-                    print("⚠️ پست حکایت به‌خاطر مشکل مدیا رد شد.")
-        remaining = need - filled_here
-        for j in range(max(remaining, 0)):
+                    hekayat_item["used"] = False
+                    print(f"⚠️ ساعت {hour} روز {day}: ارسال پست حکایت شکست خورد.")
+            else:
+                print(f"⚠️ ساعت {hour} روز {day}: پست حکایتی توی صف نبود.")
+
+        need_books = config.BOOKS_PER_SLOT - document_have
+        for j in range(max(need_books, 0)):
             book_item = pop_next_book(book_queue)
             if not book_item:
+                print(f"⚠️ ساعت {hour} روز {day}: کتابی توی صف نبود.")
                 break
-            idx = already + filled_here + j
-            b_dt = slot_dt + datetime.timedelta(minutes=2 * idx)
+            b_dt = slot_dt + datetime.timedelta(minutes=2 * (document_have + j))
             msg_id = send_book(client, entity, book_item, b_dt)
             if msg_id:
                 counters["books"] += 1
-
-    else:  # اسلات‌های عمومی (۱۰، ۱۳)
-        for j in range(need):
-            item = pop_best(post_queue, exclude_categories=config.RESERVED_CATEGORIES)
-            if not item:
-                break
-            idx = already + j
-            g_dt = slot_dt + datetime.timedelta(minutes=2 * idx) if idx else slot_dt
-            msg_id = send_post(client, entity, item, g_dt)
-            if msg_id:
-                counters["posts"] += 1
             else:
-                print("⚠️ پست عمومی به‌خاطر مشکل مدیا رد شد.")
+                book_item["used"] = False
+                print(f"⚠️ ساعت {hour} روز {day}: ارسال کتاب شکست خورد.")
+
+    else:  # اسلات‌های عمومی (۱۰، ۱۳) - ظرفیت ۱
+        if other_have < 1:
+            item = pop_best(post_queue, exclude_categories=config.RESERVED_CATEGORIES)
+            if item:
+                msg_id = send_post(client, entity, item, slot_dt)
+                if msg_id:
+                    counters["posts"] += 1
+                else:
+                    item["used"] = False
+                    print(f"⚠️ ساعت {hour} روز {day}: ارسال پست عمومی شکست خورد.")
+            else:
+                print(f"⚠️ ساعت {hour} روز {day}: هیچ پستِ عمومی‌ای توی صف نبود.")
+
+
+def needs_anything(hour: int, counts: dict) -> bool:
+    other_have = counts.get("other", 0)
+    document_have = counts.get("document", 0)
+    poll_have = counts.get("poll", 0)
+    if hour == 16:
+        return other_have < 1 or poll_have < config.QUIZZES_PER_16_SLOT
+    if hour == 19:
+        return other_have < 1 or document_have < config.BOOKS_PER_SLOT
+    return other_have < 1
 
 
 def main():
@@ -261,14 +274,11 @@ def main():
                 if slot_dt <= now:
                     continue
 
-                already = live_counts.get((day, hour), 0)
-                capacity = hour_capacity(hour)
-                need = capacity - already
-                if need <= 0:
+                counts = live_counts.get((day, hour), {"document": 0, "poll": 0, "other": 0})
+                if not needs_anything(hour, counts):
                     continue
 
-                fill_hour(client, entity, day, hour, already, need,
-                          post_queue, book_queue, alternator, counters)
+                fill_hour(client, entity, day, hour, counts, post_queue, book_queue, alternator, counters)
 
     save_json(config.POST_QUEUE_FILE, post_queue)
     save_json(config.BOOK_QUEUE_FILE, book_queue)
