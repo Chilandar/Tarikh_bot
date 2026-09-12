@@ -44,6 +44,7 @@ OWNER_USER_ID = int(os.environ.get("TG_OWNER_USER_ID", "0"))
 
 # پوشه‌ای که فایل‌های کتاب دانلودشده موقتاً توش ذخیره می‌شن
 BOOKS_DIR = os.path.join(os.path.dirname(__file__), "state", "books")
+MUSIC_DIR = os.path.join(os.path.dirname(__file__), "state", "music")
 
 # دستوری که باید به بات فرستاده بشه تا گشتن تاریخچه‌ی کانال‌ها شروع بشه
 SCAN_COMMAND_TEXT = "/scan"
@@ -160,12 +161,14 @@ HISTORY_MESSAGES_PER_RUN = 10   # هر اجرا حداکثر این تعداد �
 AUTO_FILL_MAX_MESSAGES_PER_RUN = 30   # سقفِ ایمنیِ گشتنِ خودکار (بدون /scan) در هر اجرا
 HISTORY_RAW_SCAN_CAP = 300       # حداکثر تعداد پیام خامی که برای رسیدن به همون ۱۰ تا، اجازه داریم بخونیم (ایمنی در برابر پیمایش بی‌پایان)
 BOOKS_PER_SLOT = 2               # هر روز، این تعداد کتاب برای ساعت ۱۹ زمان‌بندی می‌شه
+MUSIC_PER_10_SLOT = 1             # هر روز، این تعداد موزیکِ اختیاری برای ساعت ۱۰ زمان‌بندی می‌شه (اگه موجود بود)
 QUIZZES_PER_16_SLOT = 2           # هر روز، این تعداد کوییز برای ساعت ۱۶ زمان‌بندی می‌شه
 BOOK_EXCERPTS_PER_22_SLOT = 1     # هر روز، این تعداد پست جذاب از کتاب برای ساعت ۲۲ زمان‌بندی می‌شه
 # ---------------------------------------------------------------------------
 # امضای نهایی که جایگزین آیدی/یوزرنیم منبع می‌شه
 # ---------------------------------------------------------------------------
 SIGNATURE = "🏛️ @Tarikhgan"
+MUSIC_PERFORMER_SIGNATURE = "@Tarikhgan"   # فیلدِ «خواننده» موزیک - بدون ایموجی، طبق درخواست
 
 # ---------------------------------------------------------------------------
 # مسیر فایل‌های وضعیت (state) - این‌ها بین اجراها باید commit بشن
@@ -174,6 +177,7 @@ STATE_DIR = os.path.join(os.path.dirname(__file__), "state")
 HISTORY_PROGRESS_FILE = os.path.join(STATE_DIR, "history_progress.json")   # پیشرفت گشتن هر کانال
 POST_QUEUE_FILE = os.path.join(STATE_DIR, "post_queue.json")               # صف پست‌های خوبِ آماده
 BOOK_QUEUE_FILE = os.path.join(STATE_DIR, "book_queue.json")               # صف کتاب‌های آماده
+MUSIC_QUEUE_FILE = os.path.join(STATE_DIR, "music_queue.json")             # صف موزیک‌های آماده
 SCHEDULED_FILE = os.path.join(STATE_DIR, "scheduled.json")                 # پست‌های زمان‌بندی‌شده‌ی فعلی
 LAST_BOOK_MSG_ID_FILE = os.path.join(STATE_DIR, "last_book_msg_id.json")   # (قدیمی، دیگه استفاده نمی‌شه)
 LAST_COMMAND_UPDATE_ID_FILE = os.path.join(STATE_DIR, "last_command_update_id.json")  # (قدیمی، دیگه استفاده نمی‌شه)
