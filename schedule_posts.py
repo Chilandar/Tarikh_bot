@@ -9,7 +9,8 @@
      خالی‌موندنِ اسلاتِ حکایت، یک کتابِ اضافه (سوم) جایگزینش نشه.
 
 قوانین ظرفیت هر ساعت (به‌وقت تهران):
-  ۱۰:۰۰ و ۱۳:۰۰  -> ۱ پستِ عمومی
+  ۱۰:۰۰          -> ۱ پستِ عمومی + ۱ موزیکِ اختیاری (اگه توی صف بود؛ نبود، جاش خالی می‌مونه)
+  ۱۳:۰۰          -> ۱ پستِ عمومی
   ۱۶:۰۰          -> ۱ پست (سخن بزرگان/تصاویر قدیم) + QUIZZES_PER_16_SLOT کوییز
   ۱۹:۰۰          -> ۱ پستِ حکایت + BOOKS_PER_SLOT کتاب
   ۲۲:۰۰          -> دست‌نخورده، کاملاً متعلق به خود کاربره
@@ -31,7 +32,7 @@ from telegram_client import get_client, load_json, save_json, send_bot_message
 from text_utils import clean_channel_post_text, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
 from quiz_web import build_daily_quizzes
 from telethon.tl.functions.messages import GetScheduledHistoryRequest, SendMediaRequest
-from telethon.tl.types import Poll, PollAnswer, InputMediaPoll, TextWithEntities
+from telethon.tl.types import Poll, PollAnswer, InputMediaPoll, TextWithEntities, DocumentAttributeAudio
 
 LOOKAHEAD_DAYS = 9
 ALTERNATOR_FILE = config.STATE_DIR + "/alternator.json"
@@ -58,9 +59,12 @@ def get_live_hour_counts(client, entity):
         if dt <= now:
             continue
         key = (dt.date(), dt.hour)
-        entry = counts.setdefault(key, {"document": 0, "poll": 0, "other": 0})
+        entry = counts.setdefault(key, {"document": 0, "poll": 0, "audio": 0, "other": 0})
         if getattr(m, "document", None):
-            entry["document"] += 1
+            if getattr(m, "audio", None):
+                entry["audio"] += 1
+            else:
+                entry["document"] += 1
         elif getattr(m, "poll", None):
             entry["poll"] += 1
         else:
@@ -85,6 +89,14 @@ def pop_best(queue, category=None, exclude_categories=None):
 
 def pop_next_book(book_queue):
     for item in book_queue:
+        if not item.get("used"):
+            item["used"] = True
+            return item
+    return None
+
+
+def pop_next_music(music_queue):
+    for item in music_queue:
         if not item.get("used"):
             item["used"] = True
             return item
@@ -140,6 +152,31 @@ def send_book(client, entity, book_item: dict, schedule_dt: datetime.datetime):
     return sent.id
 
 
+def send_music(client, entity, music_item: dict, schedule_dt: datetime.datetime):
+    """
+    موزیک رو با متادیتای تمیزشده می‌فرسته: عنوان = اسمِ پاک‌سازی‌شده‌ی آهنگ،
+    خواننده = امضای کانال (@Tarikhgan) - این دو مستقیم جایگزینِ هر چیزی می‌شن
+    که خودِ فایل قبلاً داشت، چون صریحاً به‌عنوانِ attributes به تلگرام گفته
+    می‌شه، نه چیزی که از فایل خونده بشه.
+    """
+    sent = client.send_file(
+        entity,
+        music_item["file_path"],
+        caption=music_item.get("caption", ""),
+        attributes=[DocumentAttributeAudio(
+            duration=music_item.get("duration", 0),
+            title=music_item["title"],
+            performer=config.MUSIC_PERFORMER_SIGNATURE,
+        )],
+        schedule=schedule_dt,
+    )
+    try:
+        os.remove(music_item["file_path"])
+    except OSError:
+        pass
+    return sent.id
+
+
 def send_quiz(client, entity, quiz: dict, schedule_dt: datetime.datetime):
     answers = [
         PollAnswer(text=TextWithEntities(text=opt, entities=[]), option=bytes([i]))
@@ -164,13 +201,14 @@ def send_quiz(client, entity, quiz: dict, schedule_dt: datetime.datetime):
     return None
 
 
-def fill_hour(client, entity, day, hour, counts, post_queue, book_queue, alternator, counters):
+def fill_hour(client, entity, day, hour, counts, post_queue, book_queue, music_queue, alternator, counters):
     tz = pytz.timezone(config.TIMEZONE)
     slot_dt = tz.localize(datetime.datetime.combine(day, datetime.time(hour=hour)))
 
     other_have = counts.get("other", 0)
     document_have = counts.get("document", 0)
     poll_have = counts.get("poll", 0)
+    audio_have = counts.get("audio", 0)
 
     if hour == 16:
         if other_have < 1:
@@ -224,7 +262,7 @@ def fill_hour(client, entity, day, hour, counts, post_queue, book_queue, alterna
                 book_item["used"] = False
                 print(f"⚠️ ساعت {hour} روز {day}: ارسال کتاب شکست خورد.")
 
-    else:  # اسلات‌های عمومی (۱۰، ۱۳) - ظرفیت ۱
+    else:  # اسلات‌های عمومی (۱۰، ۱۳) - ظرفیت ۱ + (فقط ساعت ۱۰) موزیکِ اختیاری
         if other_have < 1:
             item = pop_best(post_queue, exclude_categories=config.RESERVED_CATEGORIES)
             if item:
@@ -237,24 +275,40 @@ def fill_hour(client, entity, day, hour, counts, post_queue, book_queue, alterna
             else:
                 print(f"⚠️ ساعت {hour} روز {day}: هیچ پستِ عمومی‌ای توی صف نبود.")
 
+        if hour == 10 and audio_have < config.MUSIC_PER_10_SLOT:
+            music_item = pop_next_music(music_queue)
+            if music_item:
+                m_dt = slot_dt + datetime.timedelta(minutes=2 * (other_have + 1))
+                msg_id = send_music(client, entity, music_item, m_dt)
+                if msg_id:
+                    counters["music"] += 1
+                else:
+                    music_item["used"] = False
+                    print(f"⚠️ ساعت {hour} روز {day}: ارسال موزیک شکست خورد.")
+            # موزیک توی صف نبود؟ مشکلی نیست - اختیاریه، جای خالی چیزِ دیگه‌ای نمی‌گیره
+
 
 def needs_anything(hour: int, counts: dict) -> bool:
     other_have = counts.get("other", 0)
     document_have = counts.get("document", 0)
     poll_have = counts.get("poll", 0)
+    audio_have = counts.get("audio", 0)
     if hour == 16:
         return other_have < 1 or poll_have < config.QUIZZES_PER_16_SLOT
     if hour == 19:
         return other_have < 1 or document_have < config.BOOKS_PER_SLOT
+    if hour == 10:
+        return other_have < 1 or audio_have < config.MUSIC_PER_10_SLOT
     return other_have < 1
 
 
 def main():
     post_queue = load_json(config.POST_QUEUE_FILE, [])
     book_queue = load_json(config.BOOK_QUEUE_FILE, [])
+    music_queue = load_json(config.MUSIC_QUEUE_FILE, [])
     alternator = load_json(ALTERNATOR_FILE, {})
 
-    counters = {"posts": 0, "books": 0, "quizzes": 0}
+    counters = {"posts": 0, "books": 0, "quizzes": 0, "music": 0}
 
     with get_client() as client:
         entity = client.get_entity(config.TARGET_CHANNEL)
@@ -274,11 +328,11 @@ def main():
                 if slot_dt <= now:
                     continue
 
-                counts = live_counts.get((day, hour), {"document": 0, "poll": 0, "other": 0})
+                counts = live_counts.get((day, hour), {"document": 0, "poll": 0, "audio": 0, "other": 0})
                 if not needs_anything(hour, counts):
                     continue
 
-                fill_hour(client, entity, day, hour, counts, post_queue, book_queue, alternator, counters)
+                fill_hour(client, entity, day, hour, counts, post_queue, book_queue, music_queue, alternator, counters)
 
     # آیتم‌های استفاده‌شده رو کامل حذف می‌کنیم (نه فقط پرچم‌گذاری) - چون
     # جلوگیری از تکراری‌بودن رو seen_text_hashes.json (دائمی و جدا از این صف)
@@ -286,14 +340,17 @@ def main():
     # انتظارِ اسلاتن، و فایلش با گذشتِ زمان بی‌دلیل بزرگ نمی‌شه.
     post_queue = [item for item in post_queue if not item.get("used")]
     book_queue = [item for item in book_queue if not item.get("used")]
+    music_queue = [item for item in music_queue if not item.get("used")]
 
     save_json(config.POST_QUEUE_FILE, post_queue)
     save_json(config.BOOK_QUEUE_FILE, book_queue)
+    save_json(config.MUSIC_QUEUE_FILE, music_queue)
     save_json(ALTERNATOR_FILE, alternator)
 
     summary = (
         f"وضعیت زمان‌بندی به‌روزرسانی شد. {counters['posts']} پست، {counters['books']} کتاب، "
-        f"و {counters['quizzes']} کوییز جدید زمان‌بندی شد (بر اساس شمارش زنده‌ی تلگرام)."
+        f"{counters['quizzes']} کوییز، و {counters['music']} موزیک جدید زمان‌بندی شد "
+        f"(بر اساس شمارش زنده‌ی تلگرام)."
     )
     print(summary)
     if any(counters.values()):
