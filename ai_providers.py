@@ -23,8 +23,8 @@ import requests
 
 import config
 
-GEMINI_MODEL = "gemini-3.5-flash"
-GROK_MODEL = "grok-4-fast"
+GEMINI_MODEL_CANDIDATES = ["gemini-flash-latest", "gemini-3.5-flash"]
+GROK_MODEL_CANDIDATES = ["grok-4.3", "grok-4.5", "grok-4-0709"]
 
 # حداقل فاصله‌ی زمانی (ثانیه) بین دو تماسِ پیاپی با یک کلیدِ یکسان
 MIN_SECONDS_BETWEEN_CALLS = {
@@ -48,37 +48,60 @@ def _mark_called(provider_type: str, api_key: str):
 
 
 def _call_gemini(api_key: str, prompt: str, timeout: int) -> str:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
-    resp = requests.post(
-        url,
-        headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-        json={"contents": [{"parts": [{"text": prompt}]}]},
-        timeout=timeout,
-    )
-    if resp.status_code == 429:
-        raise RuntimeError("۴۲۹ - محدودیت نرخ Gemini")
-    resp.raise_for_status()
-    data = resp.json()
-    return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    """
+    چند مدلِ Gemini رو به‌ترتیب امتحان می‌کنه (اول نام‌مستعارِ خودکارِ
+    "flash-latest" که خودِ گوگل به‌روز نگهش می‌داره). فقط وقتی خطا نشون‌دهنده‌ی
+    نامعتبربودن/بازنشسته‌شدنِ خودِ مدله (۴۰۰/۴۰۴) سراغ مدلِ بعدی می‌ریم؛ برای
+    ۴۲۹ (سقفِ نرخ) فوراً بالا می‌دیم تا زنجیره بره سراغِ کلیدِ بعدی، نه مدلِ
+    بعدیِ همین کلید (چون تعویضِ مدل مشکلِ سقفِ نرخ رو حل نمی‌کنه).
+    """
+    last_err = None
+    for model in GEMINI_MODEL_CANDIDATES:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        resp = requests.post(
+            url,
+            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
+            json={"contents": [{"parts": [{"text": prompt}]}]},
+            timeout=timeout,
+        )
+        if resp.status_code == 429:
+            raise RuntimeError("۴۲۹ - محدودیت نرخ Gemini")
+        if resp.status_code in (400, 404):
+            last_err = RuntimeError(f"{resp.status_code} با مدل {model} - {resp.text[:200]}")
+            continue
+        if not resp.ok:
+            raise RuntimeError(f"{resp.status_code} - {resp.text[:300]}")
+        data = resp.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    raise last_err or RuntimeError("هیچ‌کدوم از مدل‌های Gemini جواب ندادن")
 
 
 def _call_grok(api_key: str, prompt: str, timeout: int) -> str:
+    """همون منطقِ بالا، برای مدل‌های Grok (بدون نام‌مستعارِ خودکار، پس چند
+    مدلِ واقعیِ فعلی رو دستی پشتِ‌سرِهم امتحان می‌کنیم)."""
     # xAI (Grok) یک API سازگار با فرمت چت OpenAI ارائه می‌ده
     url = "https://api.x.ai/v1/chat/completions"
-    resp = requests.post(
-        url,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={
-            "model": GROK_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-        },
-        timeout=timeout,
-    )
-    if resp.status_code == 429:
-        raise RuntimeError("۴۲۹ - محدودیت نرخ Grok")
-    resp.raise_for_status()
-    data = resp.json()
-    return data["choices"][0]["message"]["content"].strip()
+    last_err = None
+    for model in GROK_MODEL_CANDIDATES:
+        resp = requests.post(
+            url,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=timeout,
+        )
+        if resp.status_code == 429:
+            raise RuntimeError("۴۲۹ - محدودیت نرخ Grok")
+        if resp.status_code in (400, 404):
+            last_err = RuntimeError(f"{resp.status_code} با مدل {model} - {resp.text[:200]}")
+            continue
+        if not resp.ok:
+            raise RuntimeError(f"{resp.status_code} - {resp.text[:300]}")
+        data = resp.json()
+        return data["choices"][0]["message"]["content"].strip()
+    raise last_err or RuntimeError("هیچ‌کدوم از مدل‌های Grok جواب ندادن")
 
 
 _CALLERS = {
