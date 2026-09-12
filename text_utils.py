@@ -117,7 +117,9 @@ def clean_music_caption(original_text: str, entities=None) -> str:
       - عبارت‌هایی مثل «کانال رسمی فلان»
       - نمادهای تزئینی‌ای که کنارِ یکی از موارد بالا بودن (نه هر جای متن)
     خط‌هایی که بعدِ این پاک‌سازی کاملاً خالی می‌شن (یعنی کلِ خط فقط آیدی/لینک
-    بوده) حذف می‌شن؛ خط‌های خالیِ عمدیِ خودِ متن دست‌نخورده می‌مونن.
+    بوده) حذف می‌شن؛ خط‌های خالیِ عمدیِ خودِ متن دست‌نخورده می‌مونن. در پایان،
+    یک خطِ کاملاً خالی و بعدش امضای کانال (🏛️ @Tarikhgan) اضافه می‌شه - دقیقاً
+    مثلِ پست‌های عادی.
     """
     text = strip_hidden_link_spans(original_text or "", entities)
     text = OFFICIAL_CHANNEL_RE.sub("", text)
@@ -142,7 +144,11 @@ def clean_music_caption(original_text: str, entities=None) -> str:
         if line == "" and final_lines and final_lines[-1] == "":
             continue
         final_lines.append(line)
-    return "\n".join(final_lines).strip("\n")
+    cleaned_caption = "\n".join(final_lines).strip("\n")
+
+    if cleaned_caption:
+        return f"{cleaned_caption}\n\n{config.SIGNATURE}"
+    return config.SIGNATURE
 
 
 def _looks_like_signature_line(line: str) -> bool:
