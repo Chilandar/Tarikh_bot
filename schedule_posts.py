@@ -33,7 +33,7 @@ from quiz_web import build_daily_quizzes
 from telethon.tl.functions.messages import GetScheduledHistoryRequest, SendMediaRequest
 from telethon.tl.types import Poll, PollAnswer, InputMediaPoll, TextWithEntities
 
-LOOKAHEAD_DAYS = 14
+LOOKAHEAD_DAYS = 9
 ALTERNATOR_FILE = config.STATE_DIR + "/alternator.json"
 
 
