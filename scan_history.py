@@ -22,7 +22,10 @@
 import datetime
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message, resolve_source_entity
-from text_utils import detect_category, text_hash_for_dedupe, get_visible_content_length, MIN_VISIBLE_CONTENT_LEN
+from text_utils import (
+    detect_category, text_hash_for_dedupe, get_visible_content_length,
+    MIN_VISIBLE_CONTENT_LEN, strip_hidden_link_spans,
+)
 from ai_classify import classify_batch_with_ai, BATCH_SIZE
 
 import pytz
@@ -183,6 +186,7 @@ class ChannelScanner:
                 return self._ready.pop(0) if self._ready else None
 
             text = msg.message or ""
+            text = strip_hidden_link_spans(text, msg.entities)
             media_type = detect_media_type(msg)
 
             has_full = media_type and (config.MIN_TEXT_LEN <= len(text) <= config.MAX_TEXT_LEN)
