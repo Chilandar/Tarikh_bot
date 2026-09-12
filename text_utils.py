@@ -47,6 +47,103 @@ SIGNATURE_MARKER_SYMBOLS = (
     "▪️", "▫️", "🔻", "🔺", "🆔", "🔹", "🔸", "➖", "➡️", "👉", "●", "○", "■", "□", "•",
 )
 
+# نمادهای تزئینیِ رایجِ کنارِ آیدی/لینک (مخصوصاً توی پیام‌های موزیک) - این‌ها
+# فقط وقتی حذف می‌شن که کنارِ یک آیدی/لینکِ حذف‌شده باشن، نه هرجایی از متن
+DECORATIVE_SYMBOLS_RE = re.compile(
+    "[" + "".join(SIGNATURE_MARKER_SYMBOLS) + "🎙️🎙📀🎧🎵🎶⬇️⬆️↓↑]+"
+)
+
+# عبارت‌هایی مثل «کانال رسمی فلان» / «کانالِ رسمیِ معین»
+OFFICIAL_CHANNEL_RE = re.compile(r"کانال[یِ‌\s]*رسمی[یِ‌\s]*[\w۰-۹آ-ی_]*")
+
+
+def strip_hidden_link_spans(text: str, entities) -> str:
+    """
+    بعضی پیام‌های تلگرام یه تکه متنِ کاملاً عادی (مثلاً یه اسم) رو از پشت به
+    یک لینک/آیدی وصل می‌کنن، بدونِ اینکه خودِ لینک هیچ‌جا توی متن نوشته شده
+    باشه - این‌ها توی متنِ خام هیچ ردی ندارن و رجکس نمی‌تونه پیداشون کنه؛
+    فقط توی «entities» ی پیام مشخصن. این تابع اون تکه‌ها رو (چه از یک آبجکتِ
+    Telethon بیاد چه یک دیکشنریِ استایلِ Bot API) از متن حذف می‌کنه.
+
+    از آفستِ UTF-16 (که تلگرام استفاده می‌کنه) درست استفاده می‌کنه، نه
+    ایندکسِ معمولیِ پایتون - وگرنه با ایموجی/کاراکترهای خاص به‌هم می‌ریخت.
+    """
+    if not text or not entities:
+        return text or ""
+
+    HIDDEN_LINK_TYPES = {"MessageEntityTextUrl", "MessageEntityMentionName", "text_link", "text_mention"}
+
+    spans = []
+    for e in entities:
+        if isinstance(e, dict):
+            etype = e.get("type")
+            offset = e.get("offset")
+            length = e.get("length")
+        else:
+            etype = type(e).__name__
+            offset = getattr(e, "offset", None)
+            length = getattr(e, "length", None)
+
+        if etype in HIDDEN_LINK_TYPES and offset is not None and length is not None:
+            spans.append((offset, length))
+
+    if not spans:
+        return text
+
+    from telethon.helpers import add_surrogate, del_surrogate
+    surrogate_text = add_surrogate(text)
+    for offset, length in sorted(spans, key=lambda s: s[0], reverse=True):
+        surrogate_text = surrogate_text[:offset] + surrogate_text[offset + length:]
+    return del_surrogate(surrogate_text)
+
+
+def clean_music_title(raw_title: str) -> str:
+    """اسمِ آهنگ رو از لینک/آیدی/عبارتِ «کانال رسمی...»/نمادهای تزئینی پاک می‌کنه."""
+    text = raw_title or ""
+    text = USERNAME_RE.sub("", text)
+    text = TME_LINK_RE.sub("", text)
+    text = OFFICIAL_CHANNEL_RE.sub("", text)
+    text = DECORATIVE_SYMBOLS_RE.sub("", text)
+    text = re.sub(r"\s+", " ", text).strip(" -|:،")
+    return text or "بدون‌نام"
+
+
+def clean_music_caption(original_text: str, entities=None) -> str:
+    """
+    کپشنِ فایلِ موزیک رو *نگه می‌داره* (برخلافِ پست‌های کانال که کامل بازنویسی
+    می‌شن) و فقط این‌ها رو حذف می‌کنه:
+      - لینک/آیدیِ نمایشی (@user، t.me/...)
+      - لینک/آیدیِ مخفی (entity، حتی وقتی متنِ نمایشی‌اش عادیه)
+      - عبارت‌هایی مثل «کانال رسمی فلان»
+      - نمادهای تزئینی‌ای که کنارِ یکی از موارد بالا بودن (نه هر جای متن)
+    خط‌هایی که بعدِ این پاک‌سازی کاملاً خالی می‌شن (یعنی کلِ خط فقط آیدی/لینک
+    بوده) حذف می‌شن؛ خط‌های خالیِ عمدیِ خودِ متن دست‌نخورده می‌مونن.
+    """
+    text = strip_hidden_link_spans(original_text or "", entities)
+    text = OFFICIAL_CHANNEL_RE.sub("", text)
+
+    result_lines = []
+    for line in text.split("\n"):
+        if not line.strip():
+            result_lines.append("")
+            continue
+
+        had_id_or_link = bool(USERNAME_RE.search(line)) or bool(TME_LINK_RE.search(line))
+        cleaned = USERNAME_RE.sub("", line)
+        cleaned = TME_LINK_RE.sub("", cleaned)
+        if had_id_or_link:
+            cleaned = DECORATIVE_SYMBOLS_RE.sub("", cleaned)
+        cleaned = cleaned.strip()
+        if cleaned:
+            result_lines.append(cleaned)
+
+    final_lines = []
+    for line in result_lines:
+        if line == "" and final_lines and final_lines[-1] == "":
+            continue
+        final_lines.append(line)
+    return "\n".join(final_lines).strip("\n")
+
 
 def _looks_like_signature_line(line: str) -> bool:
     """
