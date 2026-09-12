@@ -280,6 +280,13 @@ def main():
 
                 fill_hour(client, entity, day, hour, counts, post_queue, book_queue, alternator, counters)
 
+    # آیتم‌های استفاده‌شده رو کامل حذف می‌کنیم (نه فقط پرچم‌گذاری) - چون
+    # جلوگیری از تکراری‌بودن رو seen_text_hashes.json (دائمی و جدا از این صف)
+    # انجام می‌ده. این‌طوری صف فقط شاملِ چیزهایی می‌مونه که واقعاً در
+    # انتظارِ اسلاتن، و فایلش با گذشتِ زمان بی‌دلیل بزرگ نمی‌شه.
+    post_queue = [item for item in post_queue if not item.get("used")]
+    book_queue = [item for item in book_queue if not item.get("used")]
+
     save_json(config.POST_QUEUE_FILE, post_queue)
     save_json(config.BOOK_QUEUE_FILE, book_queue)
     save_json(ALTERNATOR_FILE, alternator)
