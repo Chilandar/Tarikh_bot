@@ -15,11 +15,12 @@
 """
 
 import os
+import hashlib
 import requests
 
 import config
 from telegram_client import get_client, load_json, save_json, send_bot_message
-from text_utils import process_book_caption, build_book_filename
+from text_utils import process_book_caption, build_book_filename, clean_music_title, clean_music_caption
 
 API_BASE = f"https://api.telegram.org/bot{config.BOT_TOKEN}"
 FILE_BASE = f"https://api.telegram.org/file/bot{config.BOT_TOKEN}"
@@ -123,11 +124,13 @@ def main():
 
     scan_flag = load_json(config.SCAN_FLAG_FILE, {"pending": False})
     book_queue = load_json(config.BOOK_QUEUE_FILE, [])
+    music_queue = load_json(config.MUSIC_QUEUE_FILE, [])
     post_queue = load_json(config.POST_QUEUE_FILE, [])
 
     max_update_id = last["update_id"]
     books_added = 0
     books_failed = 0
+    music_added = 0
 
     for update in updates:
         max_update_id = max(max_update_id, update["update_id"])
@@ -162,7 +165,45 @@ def main():
             continue
 
         document = msg.get("document")
-        if not document:
+        audio = msg.get("audio")
+        if not document and not audio:
+            continue
+
+        if audio:
+            try:
+                caption = msg.get("caption", "")
+                caption_entities = msg.get("caption_entities", [])
+                raw_title = audio.get("title") or audio.get("file_name") or "بدون‌نام"
+
+                clean_title = clean_music_title(raw_title)
+                clean_caption = clean_music_caption(caption, caption_entities)
+
+                ext = "mp3"
+                fname = audio.get("file_name", "")
+                if "." in fname:
+                    ext = fname.rsplit(".", 1)[-1]
+                safe_id = audio.get("file_unique_id") or hashlib.sha1(audio["file_id"].encode()).hexdigest()[:16]
+                dest_path = os.path.join(config.MUSIC_DIR, f"{safe_id}.{ext}")
+
+                downloaded = try_bot_api_download(audio["file_id"], dest_path)
+                if not downloaded:
+                    downloaded = try_telethon_download(audio, dest_path)
+
+                if not downloaded:
+                    send_bot_message(f"❌ دانلود موزیکِ «{clean_title}» شکست خورد.")
+                    continue
+
+                music_queue.append({
+                    "file_path": dest_path,
+                    "title": clean_title,
+                    "duration": audio.get("duration", 0),
+                    "caption": clean_caption,
+                    "used": False,
+                })
+                music_added += 1
+            except Exception as e:
+                print(f"⚠️ پردازش یک فایل موزیک با خطا مواجه شد: {e}")
+                send_bot_message(f"❌ پردازش یک موزیک با خطا مواجه شد: {e}")
             continue
 
         try:
@@ -200,11 +241,15 @@ def main():
     save_json(config.SHARED_UPDATE_ID_FILE, last)
     save_json(config.SCAN_FLAG_FILE, scan_flag)
     save_json(config.BOOK_QUEUE_FILE, book_queue)
+    save_json(config.MUSIC_QUEUE_FILE, music_queue)
     save_json(config.POST_QUEUE_FILE, post_queue)
 
-    print(f"{len(updates)} پیام بررسی شد. {books_added} کتاب اضافه شد، {books_failed} کتاب شکست خورد. /scan در انتظار: {scan_flag['pending']}")
+    print(f"{len(updates)} پیام بررسی شد. {books_added} کتاب اضافه شد، {books_failed} کتاب شکست خورد، "
+          f"{music_added} موزیک اضافه شد. /scan در انتظار: {scan_flag['pending']}")
     if books_added:
         send_bot_message(f"📚 {books_added} کتاب جدید پردازش و به صف اضافه شد.")
+    if music_added:
+        send_bot_message(f"🎵 {music_added} موزیکِ جدید پردازش و به صف اضافه شد.")
 
 
 if __name__ == "__main__":
