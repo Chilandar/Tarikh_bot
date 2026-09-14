@@ -19,6 +19,16 @@
 یک کوییزِ زمان‌بندی‌شده رو حذف کنید، دفعه‌ی بعد خودش می‌بینه جا خالی شده و
 یک کوییزِ جدید می‌سازه - کاملاً خودکار، بدون نیاز به /scan.
 
+نکته‌ی مهمِ «تأخیرِ تلگرام»: بینِ لحظه‌ای که یه پیام رو زمان‌بندی می‌کنیم تا
+لحظه‌ای که خودِ تلگرام توی GetScheduledHistoryRequest نشونش بده، گاهی چند
+دقیقه فاصله می‌افته. اگه فقط به همون شمارشِ زنده اعتماد می‌کردیم، ممکن بود
+یه اجرا همون اسلات رو یه‌بار دیگه هم پر کنه (چون تلگرام هنوز پیامِ تازه رو
+نشون نداده). برای همین، یه یادداشتِ محلیِ کوچیک و موقت (RECENT_SENDS_FILE)
+نگه می‌داریم: «همین چند دقیقه‌ی اخیر خودمون چی فرستادیم» و اونو با شمارشِ
+زنده‌ی تلگرام جمع می‌زنیم. بعد از حدودِ نیم ساعت (که دیگه تلگرام قطعاً
+به‌روز شده) این یادداشت‌ها دور ریخته می‌شن و دوباره فقط به شمارشِ زنده
+اعتماد می‌کنیم - پس تشخیصِ حذفِ دستیِ شما هم مثلِ قبل درست کار می‌کنه.
+
 اجرا: python schedule_posts.py
 """
 
@@ -36,10 +46,46 @@ from telethon.tl.types import Poll, PollAnswer, InputMediaPoll, TextWithEntities
 
 LOOKAHEAD_DAYS = 9
 ALTERNATOR_FILE = config.STATE_DIR + "/alternator.json"
+RECENT_SEND_BUFFER_MINUTES = 30  # این‌قدر بعد از ارسال، به یادداشتِ محلی اعتماد می‌کنیم نه فقط تلگرام
 
 
 def tz_now():
     return datetime.datetime.now(pytz.timezone(config.TIMEZONE))
+
+
+def apply_recent_sends(live_counts: dict, recent_sends: list) -> list:
+    """
+    یادداشتِ محلیِ «همین تازگی چی فرستادیم» رو با شمارشِ زنده‌ی تلگرام جمع
+    می‌زنه (برای جلوگیری از دوباره‌پرکردنِ یه اسلات به‌خاطرِ تأخیرِ تلگرام)،
+    و رکوردهای قدیمی‌تر از RECENT_SEND_BUFFER_MINUTES رو کنار می‌ذاره (چون
+    دیگه لازم نیستن - تلگرام تا اون‌موقع قطعاً به‌روز شده).
+    """
+    now = tz_now()
+    kept = []
+    for entry in recent_sends:
+        try:
+            sent_at = datetime.datetime.fromisoformat(entry["sent_at"])
+            age_minutes = (now - sent_at).total_seconds() / 60
+        except (KeyError, ValueError):
+            continue
+        if age_minutes > RECENT_SEND_BUFFER_MINUTES:
+            continue
+
+        kept.append(entry)
+        day = datetime.date.fromisoformat(entry["day"])
+        key = (day, entry["hour"])
+        bucket = live_counts.setdefault(key, {"document": 0, "poll": 0, "audio": 0, "other": 0})
+        bucket[entry["type"]] = bucket.get(entry["type"], 0) + 1
+    return kept
+
+
+def record_send(recent_sends: list, day, hour: int, type_key: str):
+    recent_sends.append({
+        "day": day.isoformat(),
+        "hour": hour,
+        "type": type_key,
+        "sent_at": tz_now().isoformat(),
+    })
 
 
 def get_live_hour_counts(client, entity):
@@ -123,18 +169,24 @@ def send_post(client, entity, item: dict, schedule_dt: datetime.datetime):
     if get_visible_content_length(item["text"]) < MIN_VISIBLE_CONTENT_LEN:
         return None
 
-    if has_media(item):
-        source_msg = client.get_messages(item["channel"], ids=item["message_id"])
-        if not source_msg or not source_msg.media:
-            return None
-        media_path = client.download_media(source_msg)
-        if not media_path:
-            return None
-        sent = client.send_file(entity, media_path, caption=final_text, schedule=schedule_dt)
-    else:
-        sent = client.send_message(entity, final_text, schedule=schedule_dt)
-
-    return sent.id
+    try:
+        if has_media(item):
+            source_msg = client.get_messages(item["channel"], ids=item["message_id"])
+            if not source_msg or not source_msg.media:
+                return None
+            media_path = client.download_media(source_msg)
+            if not media_path:
+                return None
+            sent = client.send_file(entity, media_path, caption=final_text, schedule=schedule_dt)
+        else:
+            sent = client.send_message(entity, final_text, schedule=schedule_dt)
+        return sent.id
+    except Exception as e:
+        # یه خطای شبکه‌ای/موقتی نباید کل اجرا رو متوقف کنه (که می‌تونه باعثِ
+        # وضعیتِ نامشخص و تکرار توی اجرای بعدی بشه) - فقط همین پست رد می‌شه،
+        # اسلات خودش سرِ فرصت (اجرای بعدی) دوباره چک می‌شه.
+        print(f"⚠️ ارسالِ پست با خطا مواجه شد: {e}")
+        return None
 
 
 def send_book(client, entity, book_item: dict, schedule_dt: datetime.datetime):
@@ -269,6 +321,7 @@ def fill_hour(client, entity, day, hour, counts, post_queue, book_queue, music_q
                 msg_id = send_post(client, entity, item, slot_dt)
                 if msg_id:
                     counters["posts"] += 1
+                    print(f"✅ ساعت {hour} روز {day}: پستِ عمومی زمان‌بندی شد (message_id={msg_id}).")
                 else:
                     item["used"] = False
                     print(f"⚠️ ساعت {hour} روز {day}: ارسال پست عمومی شکست خورد.")
@@ -332,6 +385,7 @@ def main():
                 if not needs_anything(hour, counts):
                     continue
 
+                print(f"🔎 ساعت {hour} روز {day}: نیاز به پرشدن داره - شمارشِ زنده: {counts}")
                 fill_hour(client, entity, day, hour, counts, post_queue, book_queue, music_queue, alternator, counters)
 
     # آیتم‌های استفاده‌شده رو کامل حذف می‌کنیم (نه فقط پرچم‌گذاری) - چون
