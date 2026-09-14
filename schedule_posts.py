@@ -106,11 +106,15 @@ def get_live_hour_counts(client, entity):
             continue
         key = (dt.date(), dt.hour)
         entry = counts.setdefault(key, {"document": 0, "poll": 0, "audio": 0, "other": 0})
-        if getattr(m, "document", None):
-            if getattr(m, "audio", None):
-                entry["audio"] += 1
-            else:
-                entry["document"] += 1
+        # نکته‌ی مهم: ویدیو هم از نظرِ فنی «سند» (document) حساب می‌شه، دقیقاً
+        # مثلِ کتاب - پس باید قبل از چک‌کردنِ سندِ عمومی، مخصوصاً صوتی/ویدیو
+        # رو جدا تشخیص بدیم، وگرنه یه پستِ ویدیودار اشتباهی «کتاب» شمرده می‌شه.
+        if getattr(m, "audio", None):
+            entry["audio"] += 1
+        elif getattr(m, "video", None):
+            entry["other"] += 1  # پستِ عادی با ویدیو - نه کتاب
+        elif getattr(m, "document", None):
+            entry["document"] += 1
         elif getattr(m, "poll", None):
             entry["poll"] += 1
         else:
