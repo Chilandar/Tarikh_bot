@@ -96,6 +96,10 @@ def compute_needed(client, entity, post_queue):
 
 
 def main():
+    if load_json(config.PAUSED_FLAG_FILE, {"paused": False}).get("paused"):
+        print("⏸ ربات متوقفه - این اجرا کاری انجام نمی‌ده.")
+        return
+
     progress = load_json(config.HISTORY_PROGRESS_FILE, {})
     queue = load_json(config.POST_QUEUE_FILE, [])
     stats = load_json(config.CHANNEL_STATS_FILE, {})
@@ -174,4 +178,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-              
