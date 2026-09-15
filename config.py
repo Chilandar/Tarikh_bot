@@ -48,6 +48,10 @@ MUSIC_DIR = os.path.join(os.path.dirname(__file__), "state", "music")
 
 # دستوری که باید به بات فرستاده بشه تا گشتن تاریخچه‌ی کانال‌ها شروع بشه
 SCAN_COMMAND_TEXT = "/scan"
+STOP_CALLBACK = "bot_stop_request"
+STOP_CONFIRM_CALLBACK = "bot_stop_confirm"
+STOP_CANCEL_CALLBACK = "bot_stop_cancel"
+RESUME_CALLBACK = "bot_resume"
 # ---------------------------------------------------------------------------
 # کانال‌های منبع (که ربات پست‌های قدیمی‌شون رو می‌گرده)
 # ---------------------------------------------------------------------------
@@ -178,10 +182,12 @@ HISTORY_PROGRESS_FILE = os.path.join(STATE_DIR, "history_progress.json")   # پ�
 POST_QUEUE_FILE = os.path.join(STATE_DIR, "post_queue.json")               # صف پست‌های خوبِ آماده
 BOOK_QUEUE_FILE = os.path.join(STATE_DIR, "book_queue.json")               # صف کتاب‌های آماده
 MUSIC_QUEUE_FILE = os.path.join(STATE_DIR, "music_queue.json")             # صف موزیک‌های آماده
+RECENT_SENDS_FILE = os.path.join(STATE_DIR, "recent_sends.json")           # یادداشتِ موقتِ «همین تازگی چی فرستادیم» (رفعِ تأخیرِ تلگرام)
 SCHEDULED_FILE = os.path.join(STATE_DIR, "scheduled.json")                 # پست‌های زمان‌بندی‌شده‌ی فعلی
 LAST_BOOK_MSG_ID_FILE = os.path.join(STATE_DIR, "last_book_msg_id.json")   # (قدیمی، دیگه استفاده نمی‌شه)
 LAST_COMMAND_UPDATE_ID_FILE = os.path.join(STATE_DIR, "last_command_update_id.json")  # (قدیمی، دیگه استفاده نمی‌شه)
 SHARED_UPDATE_ID_FILE = os.path.join(STATE_DIR, "telegram_update_offset.json")  # تنها ردیاب offset تلگرام (باید مشترک باشه)
 SCAN_FLAG_FILE = os.path.join(STATE_DIR, "scan_requested.json")            # آیا کاربر /scan فرستاده و هنوز اجرا نشده
+PAUSED_FLAG_FILE = os.path.join(STATE_DIR, "paused.json")                  # آیا کلِ فرایند (اسکن/پرکردن/زمان‌بندی) متوقفه
 CHANNEL_STATS_FILE = os.path.join(STATE_DIR, "channel_stats.json")         # میانگین بازدید هر کانال
 QUIZ_QUEUE_FILE = os.path.join(STATE_DIR, "quiz_queue.json")
