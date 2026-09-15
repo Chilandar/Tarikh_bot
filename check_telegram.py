@@ -25,9 +25,22 @@ from text_utils import process_book_caption, build_book_filename, clean_music_ti
 API_BASE = f"https://api.telegram.org/bot{config.BOT_TOKEN}"
 FILE_BASE = f"https://api.telegram.org/file/bot{config.BOT_TOKEN}"
 
-SCAN_KEYBOARD = {
-    "inline_keyboard": [[{"text": "🔍 شروع اسکن", "callback_data": config.SCAN_COMMAND_TEXT}]],
+STOP_CONFIRM_KEYBOARD = {
+    "inline_keyboard": [[
+        {"text": "✅ بله، کامل متوقف کن", "callback_data": config.STOP_CONFIRM_CALLBACK},
+        {"text": "❌ نه، انصراف", "callback_data": config.STOP_CANCEL_CALLBACK},
+    ]],
 }
+
+
+def main_menu_keyboard(paused: bool) -> dict:
+    """دکمه‌ی اسکن همیشه هست؛ دکمه‌ی توقف/فعال‌سازی بسته به وضعیتِ فعلی عوض می‌شه."""
+    rows = [[{"text": "🔍 شروع اسکن", "callback_data": config.SCAN_COMMAND_TEXT}]]
+    if paused:
+        rows.append([{"text": "▶️ فعال‌سازیِ دوباره", "callback_data": config.RESUME_CALLBACK}])
+    else:
+        rows.append([{"text": "⏸ توقف کامل ربات", "callback_data": config.STOP_CALLBACK}])
+    return {"inline_keyboard": rows}
 
 
 def ensure_bot_menu():
@@ -123,6 +136,7 @@ def main():
         return
 
     scan_flag = load_json(config.SCAN_FLAG_FILE, {"pending": False})
+    paused_flag = load_json(config.PAUSED_FLAG_FILE, {"paused": False})
     book_queue = load_json(config.BOOK_QUEUE_FILE, [])
     music_queue = load_json(config.MUSIC_QUEUE_FILE, [])
     post_queue = load_json(config.POST_QUEUE_FILE, [])
@@ -137,12 +151,39 @@ def main():
 
         callback = update.get("callback_query")
         if callback:
-            if callback.get("from", {}).get("id") == config.OWNER_USER_ID and callback.get("data") == config.SCAN_COMMAND_TEXT:
+            if callback.get("from", {}).get("id") != config.OWNER_USER_ID:
+                continue
+            data = callback.get("data")
+            try:
+                requests.post(f"{API_BASE}/answerCallbackQuery", data={"callback_query_id": callback["id"]}, timeout=10)
+            except requests.RequestException:
+                pass
+
+            if data == config.SCAN_COMMAND_TEXT:
                 scan_flag["pending"] = True
-                try:
-                    requests.post(f"{API_BASE}/answerCallbackQuery", data={"callback_query_id": callback["id"]}, timeout=10)
-                except requests.RequestException:
-                    pass
+
+            elif data == config.STOP_CALLBACK:
+                send_bot_message(
+                    "⚠️ مطمئنی می‌خوای کلِ فرایند (اسکن، پرکردنِ خودکار، زمان‌بندی) رو کامل متوقف کنی؟",
+                    reply_markup=STOP_CONFIRM_KEYBOARD,
+                )
+
+            elif data == config.STOP_CONFIRM_CALLBACK:
+                paused_flag["paused"] = True
+                send_bot_message(
+                    "⏸ ربات کامل متوقف شد. هیچ اسکن/پرکردن/زمان‌بندیِ جدیدی انجام نمی‌شه تا دوباره فعالش کنی.",
+                    reply_markup=main_menu_keyboard(paused=True),
+                )
+
+            elif data == config.STOP_CANCEL_CALLBACK:
+                send_bot_message("انصراف داده شد - ربات همچنان فعاله.", reply_markup=main_menu_keyboard(paused=paused_flag.get("paused", False)))
+
+            elif data == config.RESUME_CALLBACK:
+                paused_flag["paused"] = False
+                send_bot_message(
+                    "▶️ ربات دوباره فعال شد.",
+                    reply_markup=main_menu_keyboard(paused=False),
+                )
             continue
 
         msg = update.get("message")
@@ -155,13 +196,18 @@ def main():
 
         if text == "/start":
             send_bot_message(
-                "سلام! برای شروع گشتن تاریخچه‌ی کانال‌ها، دکمه‌ی زیر رو بزن یا /scan رو بفرست.",
-                reply_markup=SCAN_KEYBOARD,
+                "سلام! از دکمه‌های زیر استفاده کن:",
+                reply_markup=main_menu_keyboard(paused=paused_flag.get("paused", False)),
             )
             continue
 
         if text == config.SCAN_COMMAND_TEXT:
             scan_flag["pending"] = True
+            continue
+
+        if paused_flag.get("paused"):
+            # وقتی متوقفه، هیچ کتاب/موزیکِ جدیدی پردازش نمی‌شه - فقط دکمه‌ها
+            # (که بالاتر، مستقل از این پرچم، همیشه جواب می‌دن) کار می‌کنن.
             continue
 
         document = msg.get("document")
@@ -240,6 +286,7 @@ def main():
     last["update_id"] = max_update_id
     save_json(config.SHARED_UPDATE_ID_FILE, last)
     save_json(config.SCAN_FLAG_FILE, scan_flag)
+    save_json(config.PAUSED_FLAG_FILE, paused_flag)
     save_json(config.BOOK_QUEUE_FILE, book_queue)
     save_json(config.MUSIC_QUEUE_FILE, music_queue)
     save_json(config.POST_QUEUE_FILE, post_queue)
