@@ -33,21 +33,16 @@ STOP_CONFIRM_KEYBOARD = {
 }
 
 
-def main_menu_keyboard(paused: bool) -> dict:
-    """دکمه‌ی اسکن همیشه هست؛ دکمه‌ی توقف/فعال‌سازی بسته به وضعیتِ فعلی عوض می‌شه."""
-    rows = [[{"text": "🔍 شروع اسکن", "callback_data": config.SCAN_COMMAND_TEXT}]]
-    if paused:
-        rows.append([{"text": "▶️ فعال‌سازیِ دوباره", "callback_data": config.RESUME_CALLBACK}])
-    else:
-        rows.append([{"text": "⏸ توقف کامل ربات", "callback_data": config.STOP_CALLBACK}])
-    return {"inline_keyboard": rows}
-
-
 def ensure_bot_menu():
     try:
         requests.post(
             f"{API_BASE}/setMyCommands",
-            json={"commands": [{"command": "scan", "description": "شروع گشتن تاریخچه‌ی کانال‌ها"}]},
+            json={"commands": [
+                {"command": "start", "description": "راهنما"},
+                {"command": "scan", "description": "شروع گشتن تاریخچه‌ی کانال‌ها"},
+                {"command": "stop", "description": "توقف کامل ربات (با تأیید)"},
+                {"command": "resume", "description": "فعال‌سازیِ دوباره‌ی ربات"},
+            ]},
             timeout=10,
         )
     except requests.RequestException:
@@ -159,31 +154,12 @@ def main():
             except requests.RequestException:
                 pass
 
-            if data == config.SCAN_COMMAND_TEXT:
-                scan_flag["pending"] = True
-
-            elif data == config.STOP_CALLBACK:
-                send_bot_message(
-                    "⚠️ مطمئنی می‌خوای کلِ فرایند (اسکن، پرکردنِ خودکار، زمان‌بندی) رو کامل متوقف کنی؟",
-                    reply_markup=STOP_CONFIRM_KEYBOARD,
-                )
-
-            elif data == config.STOP_CONFIRM_CALLBACK:
+            if data == config.STOP_CONFIRM_CALLBACK:
                 paused_flag["paused"] = True
-                send_bot_message(
-                    "⏸ ربات کامل متوقف شد. هیچ اسکن/پرکردن/زمان‌بندیِ جدیدی انجام نمی‌شه تا دوباره فعالش کنی.",
-                    reply_markup=main_menu_keyboard(paused=True),
-                )
+                send_bot_message("⏸ ربات کامل متوقف شد. هیچ اسکن/پرکردن/زمان‌بندیِ جدیدی انجام نمی‌شه تا با /resume دوباره فعالش کنی.")
 
             elif data == config.STOP_CANCEL_CALLBACK:
-                send_bot_message("انصراف داده شد - ربات همچنان فعاله.", reply_markup=main_menu_keyboard(paused=paused_flag.get("paused", False)))
-
-            elif data == config.RESUME_CALLBACK:
-                paused_flag["paused"] = False
-                send_bot_message(
-                    "▶️ ربات دوباره فعال شد.",
-                    reply_markup=main_menu_keyboard(paused=False),
-                )
+                send_bot_message("انصراف داده شد - ربات همچنان فعاله.")
             continue
 
         msg = update.get("message")
@@ -196,13 +172,27 @@ def main():
 
         if text == "/start":
             send_bot_message(
-                "سلام! از دکمه‌های زیر استفاده کن:",
-                reply_markup=main_menu_keyboard(paused=paused_flag.get("paused", False)),
+                "سلام! دستورهای در دسترس (توی منوی ☰ کنارِ جعبه‌ی پیام هم هستن):\n"
+                "/scan - شروع گشتنِ تاریخچه‌ی کانال‌ها\n"
+                "/stop - توقفِ کاملِ ربات (با تأیید)\n"
+                "/resume - فعال‌سازیِ دوباره"
             )
             continue
 
         if text == config.SCAN_COMMAND_TEXT:
             scan_flag["pending"] = True
+            continue
+
+        if text == "/stop":
+            send_bot_message(
+                "⚠️ مطمئنی می‌خوای کلِ فرایند (اسکن، پرکردنِ خودکار، زمان‌بندی) رو کامل متوقف کنی؟",
+                reply_markup=STOP_CONFIRM_KEYBOARD,
+            )
+            continue
+
+        if text == "/resume":
+            paused_flag["paused"] = False
+            send_bot_message("▶️ ربات دوباره فعال شد.")
             continue
 
         if paused_flag.get("paused"):
