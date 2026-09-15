@@ -360,6 +360,10 @@ def needs_anything(hour: int, counts: dict) -> bool:
 
 
 def main():
+    if load_json(config.PAUSED_FLAG_FILE, {"paused": False}).get("paused"):
+        print("⏸ ربات متوقفه - این اجرا کاری انجام نمی‌ده.")
+        return
+
     post_queue = load_json(config.POST_QUEUE_FILE, [])
     book_queue = load_json(config.BOOK_QUEUE_FILE, [])
     music_queue = load_json(config.MUSIC_QUEUE_FILE, [])
