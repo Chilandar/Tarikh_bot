@@ -247,6 +247,10 @@ class ChannelScanner:
 
 
 def main():
+    if load_json(config.PAUSED_FLAG_FILE, {"paused": False}).get("paused"):
+        print("⏸ ربات متوقفه - این اجرا کاری انجام نمی‌ده.")
+        return
+
     scan_flag = load_json(config.SCAN_FLAG_FILE, {"pending": False})
     if not scan_flag.get("pending"):
         print("دستور /scan در انتظار نیست - این اجرا کاری انجام نمی‌ده.")
