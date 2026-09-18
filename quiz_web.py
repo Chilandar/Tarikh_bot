@@ -19,6 +19,7 @@
 import json
 import random
 import re
+import time
 import requests
 
 import config
@@ -154,11 +155,17 @@ def _leaks_text_reference(question: str) -> bool:
     return bool(LEAK_START_PATTERN.search(question or ""))
 
 
-def _fetch_category_articles(category: str, limit: int = 50, timeout: int = 20):
+_last_wiki_call_time = [0.0]
+MIN_SECONDS_BETWEEN_WIKI_CALLS = 1.0  # فاصله‌ی مؤدبانه بینِ درخواست‌ها به ویکی‌پدیا
+
+
+def _fetch_category_articles(category: str, limit: int = 50, timeout: int = 20, max_retries: int = 3):
     """
     برای یک رده‌ی ویکی‌پدیا، لیستی از {"title", "extract"} صفحات عضوش رو
     برمی‌گردونه - در یک درخواست (generator=categorymembers + prop=extracts).
-    این درخواست‌ها به ویکی‌پدیاست، نه به AI - ربطی به سهمیه‌ی AI نداره.
+    این درخواست‌ها به ویکی‌پدیاست، نه به AI - ربطی به سهمیه‌ی AI نداره؛ ولی
+    خودِ ویکی‌پدیا هم سقفِ نرخ داره، پس بینِ درخواست‌ها فاصله می‌ذاریم و اگه
+    ۴۲۹ گرفتیم، به‌جای تسلیم‌شدن کمی صبر و دوباره امتحان می‌کنیم.
     """
     params = {
         "action": "query",
@@ -172,13 +179,31 @@ def _fetch_category_articles(category: str, limit: int = 50, timeout: int = 20):
         "explaintext": 1,
         "exchars": 1200,
     }
-    try:
-        resp = requests.get(WIKI_API, params=params, timeout=timeout,
-                             headers={"User-Agent": "TarikhganBot/1.0"})
-        resp.raise_for_status()
-        pages = resp.json().get("query", {}).get("pages", {})
-    except Exception as e:
-        print(f"⚠️ گرفتن رده‌ی «{category}» از ویکی‌پدیا شکست خورد: {e}")
+
+    for attempt in range(1, max_retries + 1):
+        elapsed = time.time() - _last_wiki_call_time[0]
+        if elapsed < MIN_SECONDS_BETWEEN_WIKI_CALLS:
+            time.sleep(MIN_SECONDS_BETWEEN_WIKI_CALLS - elapsed)
+
+        try:
+            resp = requests.get(WIKI_API, params=params, timeout=timeout,
+                                 headers={"User-Agent": "TarikhganBot/1.0"})
+            _last_wiki_call_time[0] = time.time()
+
+            if resp.status_code == 429:
+                wait = 5 * attempt
+                print(f"⚠️ ویکی‌پدیا محدودیتِ نرخ داد (۴۲۹) برای رده‌ی «{category}» - {wait} ثانیه صبر می‌کنیم...")
+                time.sleep(wait)
+                continue
+
+            resp.raise_for_status()
+            pages = resp.json().get("query", {}).get("pages", {})
+            break
+        except Exception as e:
+            print(f"⚠️ گرفتن رده‌ی «{category}» از ویکی‌پدیا شکست خورد: {e}")
+            return []
+    else:
+        print(f"⚠️ رده‌ی «{category}» بعد از چند تلاش هنوز ۴۲۹ می‌ده - فعلاً ردش می‌کنیم.")
         return []
 
     articles = []
