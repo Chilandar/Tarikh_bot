@@ -359,14 +359,26 @@ def build_daily_quizzes(day, count: int = 2):
             prior_questions_by_title.setdefault(r["title"], []).append(r["question"])
 
     excluded = set(recent_titles)
+    pool = load_json(WIKI_POOL_FILE, [])
+
     candidates = []
     target = min(count * CANDIDATE_MULTIPLIER, QUIZ_BATCH_SIZE)
+    refilled_already = False
     while len(candidates) < target:
-        article = _pick_fresh_article(excluded)
+        fresh_in_pool = any(a["title"] not in excluded for a in pool)
+        if (len(pool) < WIKI_POOL_MIN_SIZE or not fresh_in_pool) and not refilled_already:
+            # فقط یک‌بار در هر اجرا پر می‌کنیم - نه هر بار که کم آورد، تا
+            # اگه ویکی‌پدیا موقتاً در دسترس نبود، پشتِ‌سرِهم بهش سر نزنیم
+            pool = _refill_pool(pool, excluded)
+            refilled_already = True
+
+        article = _pick_fresh_article(pool, excluded)
         if not article:
-            break
+            break  # ویکی‌پدیا هم دیگه چیزِ تازه‌ای نداشت (یا موقتاً در دسترس نبود)
         excluded.add(article["title"])
         candidates.append(article)
+
+    save_json(WIKI_POOL_FILE, pool)  # هرچی از حوضچه مصرف شد، همون‌جا کم بشه
 
     if not candidates:
         return []
