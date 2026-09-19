@@ -17,6 +17,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_API_KEY_2 = os.environ.get("GEMINI_API_KEY_2", "")   # کلید دوم گوگل (مثلاً اکانت دوستت)
 GROK_API_KEY = os.environ.get("GROK_API_KEY", "")
 GROK_API_KEY_2 = os.environ.get("GROK_API_KEY_2", "")       # کلید دوم Grok (مثلاً اکانت دوستت)
+WIKI_API_TOKEN = os.environ.get("WIKI_API_TOKEN", "")        # توکنِ شخصیِ ویکی‌مدیا (سقفِ نرخ رو ۱۰ برابر می‌کنه)
 
 # ---------------------------------------------------------------------------
 # ترتیب اولویتِ استفاده از مدل‌های هوش مصنوعی
