@@ -50,10 +50,11 @@ def _mark_called(provider_type: str, api_key: str):
 def _call_gemini(api_key: str, prompt: str, timeout: int) -> str:
     """
     چند مدلِ Gemini رو به‌ترتیب امتحان می‌کنه (اول نام‌مستعارِ خودکارِ
-    "flash-latest" که خودِ گوگل به‌روز نگهش می‌داره). فقط وقتی خطا نشون‌دهنده‌ی
-    نامعتبربودن/بازنشسته‌شدنِ خودِ مدله (۴۰۰/۴۰۴) سراغ مدلِ بعدی می‌ریم؛ برای
-    ۴۲۹ (سقفِ نرخ) فوراً بالا می‌دیم تا زنجیره بره سراغِ کلیدِ بعدی، نه مدلِ
-    بعدیِ همین کلید (چون تعویضِ مدل مشکلِ سقفِ نرخ رو حل نمی‌کنه).
+    "flash-latest" که خودِ گوگل به‌روز نگهش می‌داره). وقتی خطا نشون‌دهنده‌ی
+    نامعتبربودن/بازنشسته‌شدنِ خودِ مدله (۴۰۰/۴۰۴) یا مدل موقتاً شلوغه (۵۰۳)
+    سراغ مدلِ بعدی می‌ریم؛ برای ۴۲۹ (سقفِ نرخ) فوراً بالا می‌دیم تا زنجیره
+    بره سراغِ کلیدِ بعدی، نه مدلِ بعدیِ همین کلید (چون تعویضِ مدل مشکلِ سقفِ
+    نرخ رو حل نمی‌کنه).
     """
     last_err = None
     for model in GEMINI_MODEL_CANDIDATES:
@@ -66,7 +67,7 @@ def _call_gemini(api_key: str, prompt: str, timeout: int) -> str:
         )
         if resp.status_code == 429:
             raise RuntimeError("۴۲۹ - محدودیت نرخ Gemini")
-        if resp.status_code in (400, 404):
+        if resp.status_code in (400, 404, 503):
             last_err = RuntimeError(f"{resp.status_code} با مدل {model} - {resp.text[:200]}")
             continue
         if not resp.ok:
@@ -94,7 +95,7 @@ def _call_grok(api_key: str, prompt: str, timeout: int) -> str:
         )
         if resp.status_code == 429:
             raise RuntimeError("۴۲۹ - محدودیت نرخ Grok")
-        if resp.status_code in (400, 404):
+        if resp.status_code in (400, 404, 503):
             last_err = RuntimeError(f"{resp.status_code} با مدل {model} - {resp.text[:200]}")
             continue
         if not resp.ok:
