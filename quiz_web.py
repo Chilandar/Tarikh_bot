@@ -49,8 +49,10 @@ IRAN_WEIGHT = 0.75
 USED_TOPICS_FILE = config.STATE_DIR + "/quiz_used_topics.json"
 
 # پنجره‌ی «تنوعِ موضوع»: یه مقاله تا این‌قدر رکورد اخیر، دوباره انتخاب نمی‌شه
-# (روزی ۲ کوییز یعنی ~۱۵۰ روز/۵ ماه فاصله)
-MAX_RECENT_FOR_EXCLUSION = 300
+# (روزی ۲ کوییز یعنی ~۷۵ روز/۲.۵ ماه فاصله). عمداً کوچیک‌تر از قبله - چون
+# استخرِ واقعیِ رده‌ها محدوده و یه عددِ خیلی بزرگ باعث می‌شه عملاً کلِ استخر
+# «اخیراً استفاده‌شده» حساب بشه و هیچ مقاله‌ی تازه‌ای پیدا نشه.
+MAX_RECENT_FOR_EXCLUSION = 150
 
 # پنجره‌ی «جلوگیری از تکرارِ عینِ سوال»: بزرگ‌تر از بالاست، چون حتی بعد از
 # اینکه یه مقاله دوباره قابل‌انتخاب شد، هنوز یادمونه قبلاً چه سوالی ازش
@@ -164,7 +166,7 @@ _last_wiki_call_time = [0.0]
 MIN_SECONDS_BETWEEN_WIKI_CALLS = 1.0  # فاصله‌ی مؤدبانه بینِ درخواست‌ها به ویکی‌پدیا
 
 
-def _fetch_category_articles(category: str, limit: int = 50, timeout: int = 20, max_retries: int = 3):
+def _fetch_category_articles(category: str, limit: int = 500, timeout: int = 20, max_retries: int = 3):
     """
     برای یک رده‌ی ویکی‌پدیا، لیستی از {"title", "extract"} صفحات عضوش رو
     برمی‌گردونه - در یک درخواست (generator=categorymembers + prop=extracts).
@@ -222,19 +224,75 @@ def _fetch_category_articles(category: str, limit: int = 50, timeout: int = 20, 
     return articles
 
 
+def _fetch_subcategories(category: str, limit: int = 500, timeout: int = 20):
+    """
+    زیررده‌های مستقیمِ یک رده رو برمی‌گردونه (لیستی از اسم‌ها، بدونِ پیشوندِ
+    «رده:»). چون رده‌های ویکی‌پدیا درختی‌ان (مثلاً زیرِ «شاهان ایران» ده‌ها
+    زیررده مثلِ «شاهان هخامنشی»/«شاهان ساسانی» هست، هرکدوم با مقاله‌های خودش)،
+    این تابع اجازه می‌ده یه لایه عمیق‌تر بریم، نه فقط اعضای مستقیمِ رده‌ی اصلی.
+    """
+    params = {
+        "action": "query",
+        "format": "json",
+        "list": "categorymembers",
+        "cmtitle": f"رده:{category}",
+        "cmlimit": limit,
+        "cmtype": "subcat",
+    }
+    elapsed = time.time() - _last_wiki_call_time[0]
+    if elapsed < MIN_SECONDS_BETWEEN_WIKI_CALLS:
+        time.sleep(MIN_SECONDS_BETWEEN_WIKI_CALLS - elapsed)
+    try:
+        headers = {"User-Agent": "TarikhganBot/1.0"}
+        if config.WIKI_API_TOKEN:
+            headers["Authorization"] = f"Bearer {config.WIKI_API_TOKEN}"
+        resp = requests.get(WIKI_API, params=params, timeout=timeout, headers=headers)
+        _last_wiki_call_time[0] = time.time()
+        resp.raise_for_status()
+        members = resp.json().get("query", {}).get("categorymembers", [])
+    except Exception as e:
+        print(f"⚠️ گرفتنِ زیررده‌های «{category}» شکست خورد: {e}")
+        return []
+
+    return [m["title"][len("رده:"):] for m in members if m.get("title", "").startswith("رده:")]
+
+
 def _pick_category() -> str:
     pool = IRAN_HISTORY_CATEGORIES if random.random() < IRAN_WEIGHT else WORLD_HISTORY_CATEGORIES
     return random.choice(pool)
 
 
 def _pick_fresh_article(excluded_titles: set, max_attempts: int = 6):
-    """مستقیم و زنده از یه رده‌ی تصادفی می‌گیره تا یه مقاله‌ی تازه (که قبلاً استفاده نشده) پیدا کنه."""
+    """
+    مستقیم و زنده از یه رده‌ی تصادفی می‌گیره تا یه مقاله‌ی تازه (که قبلاً
+    استفاده نشده) پیدا کنه. حدودِ نیمی از تلاش‌ها، به‌جای اعضای مستقیمِ رده‌ی
+    اصلی، یه زیررده‌ی تصادفی‌شو می‌گیره - این‌طوری به عمقِ واقعیِ درختِ
+    رده‌بندیِ ویکی‌پدیا دسترسی داریم (مثلاً از «شاهان ایران» به «شاهان
+    هخامنشی»/«شاهان ساسانی» و امثالش)، نه فقط لایه‌ی اول.
+    """
+    total_fetched = 0
+    total_already_excluded = 0
     for _ in range(max_attempts):
-        articles = _fetch_category_articles(_pick_category())
+        category = _pick_category()
+
+        if random.random() < 0.5:
+            subcats = _fetch_subcategories(category)
+            if subcats:
+                category = random.choice(subcats)
+
+        articles = _fetch_category_articles(category)
+        total_fetched += len(articles)
         random.shuffle(articles)
         for article in articles:
             if article["title"] not in excluded_titles:
                 return article
+            total_already_excluded += 1
+
+    # به اینجا رسیدیم یعنی مقاله‌ای پیدا نشد - ولی هیچ خطایی هم نبود (وگرنه
+    # همون‌جا توی _fetch_category_articles لاگ می‌شد)؛ این دقیقاً همون حالتیه
+    # که قبلاً بی‌صدا رد می‌شد - الان دلیلش رو صریح می‌نویسیم.
+    print(f"⚠️ بعد از {max_attempts} تلاش، مقاله‌ی تازه‌ای پیدا نشد - "
+          f"{total_fetched} مقاله بررسی شد، {total_already_excluded} تاشون قبلاً «اخیراً استفاده‌شده» بودن.")
     return None
 
 
