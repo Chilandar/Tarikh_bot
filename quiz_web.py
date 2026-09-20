@@ -11,11 +11,10 @@
 اون - این‌جا یه درخواستِ مخصوصِ خودِ کوییزهاست، قاطیِ درخواستِ دسته‌بندیِ
 پست‌ها نمی‌شه.
 
-درباره‌ی ویکی‌پدیا: به‌جای اینکه هر بار که یه کوییز لازمه زنده بریم رده‌ها رو
-بگردیم (که با تعداد بالا می‌تونه به سقفِ نرخِ خودِ ویکی‌پدیا بخوره)، یه
-حوضچه‌ی محلی از مقاله‌های از پیش‌گرفته‌شده نگه می‌داریم (WIKI_POOL_FILE).
-وقتی حوضچه کم بیاره، یه‌بار از همه‌ی رده‌ها پرش می‌کنیم؛ کوییزهای روزانه از
-همین حوضچه انتخاب می‌شن، نه با یه درخواستِ زنده‌ی جدا برای هرکدوم.
+درباره‌ی ویکی‌پدیا: هر بار مستقیم و زنده از رده‌ها می‌خونیم (بدونِ حوضچه‌ی
+محلی). چون یه توکنِ شخصیِ ویکی‌مدیا (WIKI_API_TOKEN) وصله، سقفِ نرخ ۵٬۰۰۰
+درخواست در ساعته - که برای این حجمِ مصرف زیاد کافیه. اگه توکن نبود یا
+موقتاً ۴۲۹ گرفتیم، خودش کمی صبر می‌کنه و دوباره امتحان می‌کنه.
 
 برای جلوگیری از تکرارِ زیادِ یک موضوع، عنوان مقالاتی که قبلاً استفاده شدن
 توی state/quiz_used_topics.json نگه‌داری می‌شه (فقط آخرین چند صد تا، تا
@@ -46,10 +45,6 @@ WORLD_HISTORY_CATEGORIES = [
 
 # چقدر از کوییزها از تاریخ ایران باشن در مقابل تاریخ جهان (طبق خواسته‌ی شما: بیشتر ایران)
 IRAN_WEIGHT = 0.75
-
-WIKI_POOL_FILE = config.STATE_DIR + "/wiki_article_pool.json"
-WIKI_POOL_MIN_SIZE = 30   # وقتی حوضچه به این تعداد یا کمتر برسه، دوباره پر می‌شه
-WIKI_POOL_TARGET_PER_CATEGORY = 50  # هر بار پرکردن، حداکثر تا این تعداد از هر رده
 
 USED_TOPICS_FILE = config.STATE_DIR + "/quiz_used_topics.json"
 
@@ -232,28 +227,14 @@ def _pick_category() -> str:
     return random.choice(pool)
 
 
-def _refill_pool(pool: list, excluded_titles: set):
-    """
-    از همه‌ی رده‌ها (ایران + جهان) یه دورِ کامل می‌گیره و مقاله‌های تازه
-    (که نه توی حوضچه‌ی فعلی‌ان، نه اخیراً استفاده شدن) بهش اضافه می‌کنه.
-    این تنها جاییه که واقعاً به ویکی‌پدیا سر می‌زنیم - نه هر بار که یه کوییز لازمه.
-    """
-    existing_titles = {a["title"] for a in pool} | excluded_titles
-    for category in IRAN_HISTORY_CATEGORIES + WORLD_HISTORY_CATEGORIES:
-        articles = _fetch_category_articles(category, limit=WIKI_POOL_TARGET_PER_CATEGORY)
+def _pick_fresh_article(excluded_titles: set, max_attempts: int = 6):
+    """مستقیم و زنده از یه رده‌ی تصادفی می‌گیره تا یه مقاله‌ی تازه (که قبلاً استفاده نشده) پیدا کنه."""
+    for _ in range(max_attempts):
+        articles = _fetch_category_articles(_pick_category())
+        random.shuffle(articles)
         for article in articles:
-            if article["title"] not in existing_titles:
-                pool.append(article)
-                existing_titles.add(article["title"])
-    return pool
-
-
-def _pick_fresh_article(pool: list, excluded_titles: set):
-    """یه مقاله از حوضچه‌ی محلی برمی‌داره (و از حوضچه حذفش می‌کنه) - بدونِ هیچ تماسِ زنده‌ای."""
-    random.shuffle(pool)
-    for i, article in enumerate(pool):
-        if article["title"] not in excluded_titles:
-            return pool.pop(i)
+            if article["title"] not in excluded_titles:
+                return article
     return None
 
 
@@ -359,26 +340,14 @@ def build_daily_quizzes(day, count: int = 2):
             prior_questions_by_title.setdefault(r["title"], []).append(r["question"])
 
     excluded = set(recent_titles)
-    pool = load_json(WIKI_POOL_FILE, [])
-
     candidates = []
     target = min(count * CANDIDATE_MULTIPLIER, QUIZ_BATCH_SIZE)
-    refilled_already = False
     while len(candidates) < target:
-        fresh_in_pool = any(a["title"] not in excluded for a in pool)
-        if (len(pool) < WIKI_POOL_MIN_SIZE or not fresh_in_pool) and not refilled_already:
-            # فقط یک‌بار در هر اجرا پر می‌کنیم - نه هر بار که کم آورد، تا
-            # اگه ویکی‌پدیا موقتاً در دسترس نبود، پشتِ‌سرِهم بهش سر نزنیم
-            pool = _refill_pool(pool, excluded)
-            refilled_already = True
-
-        article = _pick_fresh_article(pool, excluded)
+        article = _pick_fresh_article(excluded)
         if not article:
-            break  # ویکی‌پدیا هم دیگه چیزِ تازه‌ای نداشت (یا موقتاً در دسترس نبود)
+            break
         excluded.add(article["title"])
         candidates.append(article)
-
-    save_json(WIKI_POOL_FILE, pool)  # هرچی از حوضچه مصرف شد، همون‌جا کم بشه
 
     if not candidates:
         return []
