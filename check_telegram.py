@@ -245,11 +245,12 @@ def main():
 
         try:
             caption = msg.get("caption", "")
+            caption_entities = msg.get("caption_entities", [])
             original_filename = document.get("file_name", "book.pdf")
             ext = original_filename.split(".")[-1] if "." in original_filename else "pdf"
 
-            parsed = process_book_caption(caption)
-            new_filename = build_book_filename(parsed["book_title"], parsed["volume_number"], ext)
+            parsed = process_book_caption(caption, caption_entities)
+            new_filename = build_book_filename(parsed["filename_title"], parsed["volume_number"], ext)
             dest_path = os.path.join(config.BOOKS_DIR, new_filename)
 
             downloaded = try_bot_api_download(document["file_id"], dest_path)
