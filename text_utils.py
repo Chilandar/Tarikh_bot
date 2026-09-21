@@ -331,68 +331,39 @@ def _strip_ketab_prefix(title: str) -> str:
     return t
 
 
-def process_book_caption(raw_caption: str):
-    lines = [ln for ln in (raw_caption or "").split("\n")]
-
+def process_book_caption(raw_caption: str, entities=None):
+    """
+    اسمِ کتاب و شماره‌ی جلد رو فقط برای ساختِ اسمِ فایل استخراج می‌کنه - ولی
+    خودِ کپشنِ نهایی دیگه بازسازی نمی‌شه؛ کلِ متنِ اصلی نگه داشته می‌شه و فقط
+    لینک/آیدی (نمایشی یا مخفی) و نمادهای کنارشون حذف می‌شن - دقیقاً همون
+    قانونِ clean_music_caption (چون قبلاً معلوم شد بازسازیِ خط‌به‌خط باعث
+    می‌شد برای بعضی کتاب‌ها نویسنده/مترجم بی‌صدا حذف بشه).
+    """
     book_title = None
-    author_line = None
-    translator_line = None
-    volume_number = None
-    first_line = None
 
-    for raw_line in lines:
+    for raw_line in (raw_caption or "").split("\n"):
         line = raw_line.strip()
-
-        if not line:
+        if not line or CHANNEL_ID_RE.match(line):
             continue
+        m = LINE1_RE.match(line)
+        if m:
+            book_title = m.group("title").strip()
+        else:
+            book_title = line
+        break
 
-        if CHANNEL_ID_RE.match(line):
-            continue
+    volume_number = None
+    vol_match = VOLUME_RE.search(raw_caption or "")
+    if vol_match:
+        volume_number = _persian_ordinal_to_digit(vol_match.group(1))
 
-        vol_match = VOLUME_RE.search(line)
-        if vol_match and ("جلد" in line):
-            volume_number = _persian_ordinal_to_digit(vol_match.group(1))
-            continue
-
-        author_match = AUTHOR_RE.match(line)
-        translator_match = TRANSLATOR_RE.match(line)
-
-        if translator_match:
-            sticker = "✍️"
-            name = translator_match.group("name").strip()
-            translator_line = _fix_sticker_spacing(sticker, f"ترجمه: {name}")
-            continue
-
-        if author_match:
-            sticker = author_match.group("sticker") or "👤"
-            name = author_match.group("name").strip()
-            author_line = _fix_sticker_spacing(sticker, f"تالیف: {name}")
-            continue
-
-        if book_title is None:
-            m = LINE1_RE.match(line)
-            if m:
-                sticker = m.group("sticker")
-                title = m.group("title").strip()
-                book_title = title
-                line = _fix_sticker_spacing(sticker, title)
-            first_line = line
-            continue
-
-    body_lines = [ln for ln in [first_line if book_title else None, author_line, translator_line] if ln]
-    if volume_number:
-        body_lines.append(f"📕 جلد {volume_number}")
-
-    bold_body = f"<b>{html.escape(chr(10).join(body_lines))}</b>"
-    clean_caption = f"{bold_body}\n\n{config.SIGNATURE}"
+    clean_caption = clean_music_caption(raw_caption, entities)
 
     return {
         "clean_caption": clean_caption,
         "book_title": book_title or "کتاب بدون‌نام",
         "filename_title": _strip_ketab_prefix(book_title or "کتاب بدون‌نام"),
         "volume_number": volume_number,
-        "author_line": author_line,
-        "translator_line": translator_line,
     }
 
 
