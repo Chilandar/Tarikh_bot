@@ -330,7 +330,73 @@ def _strip_ketab_prefix(title: str) -> str:
         return rest if rest else t
     return t
 
+STICKER_CHAR_RE = re.compile(
+    r"([\U0001F000-\U0001FFFF\u2190-\u21FF\u2300-\u27BF\u2B00-\u2BFF]+)[ \t]*(?=[^\s])"
+)
 
+
+def _normalize_sticker_spacing(text: str) -> str:
+    """هر استیکر/ایموجی‌ای که قبل از یک کلمه بیاد، دقیقاً یک فاصله بینشون می‌مونه - نه کمتر، نه بیشتر."""
+    return STICKER_CHAR_RE.sub(lambda m: m.group(1) + " ", text)
+
+def _apply_book_sticker_rules(text: str) -> str:
+    """
+    اولین 👤 دست‌نخورده می‌مونه، دومین 👤 تبدیل به ✍️ می‌شه، سومی/چهارمی (اگه
+    بود) دست‌نخورده می‌مونن. 📖 همیشه به 📕 و 📙 همیشه به 📚 تبدیل می‌شه.
+    """
+    count = [0]
+
+    def repl(m):
+        count[0] += 1
+        if count[0] == 2:
+            return "✍️"
+        return m.group(0)
+
+    text = re.sub("👤", repl, text)
+    text = text.replace("📖", "📕").replace("📙", "📚")
+    return text
+
+
+def _normalize_colon_spacing(text: str) -> str:
+    """قانون نگارشی: بدون فاصله قبل از دونقطه، دقیقاً یک فاصله بعدش."""
+    text = re.sub(r"[ \t]+:", ":", text)
+    text = re.sub(r":(?!\s)", ": ", text)
+    text = re.sub(r":[ \t]{2,}", ": ", text)
+    return text
+
+
+def build_book_caption_text(raw_caption: str, entities=None) -> str:
+    """
+    کپشنِ کتاب رو می‌سازه: آیدی/لینک (نمایشی یا مخفی) حذف می‌شه، خط‌های
+    کاملاً خالی حذف می‌شن (برخلاف clean_music_caption که نگه‌شون می‌داره)،
+    قوانین استیکر و دونقطه اعمال می‌شه، و کل متن بولد می‌شه.
+    """
+    text = strip_hidden_link_spans(raw_caption or "", entities)
+    text = OFFICIAL_CHANNEL_RE.sub("", text)
+
+    result_lines = []
+    for line in text.split("\n"):
+        if not line.strip():
+            continue  # برخلاف موزیک: خط خالی کامل حذف می‌شه، نه نگه‌داشتن
+        had_id_or_link = bool(USERNAME_RE.search(line)) or bool(TME_LINK_RE.search(line))
+        cleaned = USERNAME_RE.sub("", line)
+        cleaned = TME_LINK_RE.sub("", cleaned)
+        if had_id_or_link:
+            cleaned = DECORATIVE_SYMBOLS_RE.sub("", cleaned)
+        cleaned = cleaned.strip()
+        if cleaned:
+            result_lines.append(cleaned)
+
+    body_text = "\n".join(result_lines)
+    if not body_text:
+        return config.SIGNATURE
+
+    body_text = _apply_book_sticker_rules(body_text)
+    body_text = _normalize_sticker_spacing(body_text)
+    body_text = _normalize_colon_spacing(body_text)
+
+    bold_body = f"<b>{html.escape(body_text)}</b>"
+    return f"{bold_body}\n\n{config.SIGNATURE}"
 def process_book_caption(raw_caption: str, entities=None):
     """
     اسمِ کتاب و شماره‌ی جلد رو فقط برای ساختِ اسمِ فایل استخراج می‌کنه - ولی
@@ -357,7 +423,7 @@ def process_book_caption(raw_caption: str, entities=None):
     if vol_match:
         volume_number = _persian_ordinal_to_digit(vol_match.group(1))
 
-    clean_caption = clean_music_caption(raw_caption, entities)
+    clean_caption = build_book_caption_text(raw_caption, entities)
 
     return {
         "clean_caption": clean_caption,
